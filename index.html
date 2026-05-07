@@ -636,7 +636,7 @@ class Particle {
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.fillStyle = active
-      ? emotionColor(valence, this.alpha)
+      ? vizColor(valence, this.alpha)
       : `rgba(100,95,145,${this.alpha * 0.35})`;
     ctx.fill();
   }
@@ -672,8 +672,8 @@ function drawWaves(valence, energy, tempo) {
     const speed   = beatHz * (0.6 + w * 0.15);
     const alpha   = (0.04 + energy * 0.07) * (1 - w / (nWaves + 1) * 0.5);
     const wColor  = w % 2 === 0
-      ? emotionColor(valence, alpha)
-      : emotionColorSoft(valence, alpha * 0.7);
+      ? vizColor(valence, alpha)
+      : vizColor(valence, alpha * 0.6);
 
     ctx.beginPath();
     ctx.moveTo(0, baseY);
@@ -700,90 +700,12 @@ function drawConnections(valence, energy) {
         ctx.moveTo(particles[i].x, particles[i].y);
         ctx.lineTo(particles[j].x, particles[j].y);
         ctx.strokeStyle = currentState.active
-          ? emotionColor(valence, a)
+          ? vizColor(valence, a)
           : `rgba(100,95,145,${a * 0.4})`;
         ctx.lineWidth = 0.5;
         ctx.stroke();
       }
     }
-  }
-}
-
-/* ── BEAT RIPPLES ──
-   Cada beat lanza una onda que:
-   - Nace gruesa y brillante en el centro
-   - Se expande rápido al principio y desacelera (easeOut)
-   - El grosor y opacidad caen a medida que se expande
-   - La velocidad de expansión depende del tempo exacto:
-     el ripple debe llegar al borde justo antes del próximo beat */
-const ripples = [];
-
-function spawnRipple(valence, energy, tempo) {
-  const maxR      = Math.hypot(canvas.width, canvas.height) / 2 * 1.05;
-  const beatSecs  = 60 / tempo;          /* duración de un beat en segundos */
-  ripples.push({
-    x:        canvas.width  / 2,
-    y:        canvas.height / 2,
-    r:        0,
-    maxR:     maxR,
-    progress: 0,                         /* 0 → 1 a lo largo de un beat */
-    duration: beatSecs * 0.92,           /* llega al borde en ~92% del beat */
-    alpha0:   0.5 + energy * 0.35,       /* opacidad inicial según energía */
-    width0:   3.5 + energy * 4,          /* grosor inicial */
-    valence:  valence,
-    born:     performance.now(),
-  });
-}
-
-function drawRipples(now) {
-  for (let i = ripples.length - 1; i >= 0; i--) {
-    const rp = ripples[i];
-    const elapsed  = (now - rp.born) / 1000;       /* segundos desde el spawn */
-    rp.progress    = Math.min(1, elapsed / rp.duration);
-
-    /* easeOut cúbico: rápido al inicio, lento al final */
-    const ease     = 1 - Math.pow(1 - rp.progress, 3);
-    rp.r = Math.max(0, ease * rp.maxR);
-
-    /* opacidad y grosor caen con el progreso */
-    const alpha    = rp.alpha0 * (1 - rp.progress);
-    const lw       = rp.width0 * (1 - rp.progress * 0.85);
-
-    if (rp.progress >= 1 || alpha < 0.005) {
-      ripples.splice(i, 1);
-      continue;
-    }
-
-    ctx.beginPath();
-    ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
-    ctx.strokeStyle = emotionColor(rp.valence, alpha);
-    ctx.lineWidth   = lw;
-    ctx.stroke();
-  }
-}
-
-/* Temporizador del beat — usa performance.now() directamente,
-   sin pasar por el lerp de currentState para máxima precisión */
-let lastBeatTime  = 0;
-let lastBeatTempo = 0;
-
-function tickBeat(valence, energy, now) {
-  if (!targetState.active || energy < 0.08) return;
-  const tempo        = targetState.tempo;           /* tempo sin suavizar */
-  const beatInterval = (60 / tempo) * 1000;
-
-  /* Si el tempo cambió mucho, resetear para evitar rafaga de beats */
-  if (Math.abs(tempo - lastBeatTempo) > 20) {
-    lastBeatTime  = now;
-    lastBeatTempo = tempo;
-    return;
-  }
-
-  if (now - lastBeatTime >= beatInterval) {
-    lastBeatTime += beatInterval;                   /* drift correction */
-    if (now - lastBeatTime > beatInterval) lastBeatTime = now;
-    lastBeatTempo = tempo;
-    spawnRipple(valence, energy, tempo);
   }
 }
 
@@ -802,11 +724,8 @@ function animLoop() {
   ctx.fillStyle = `rgba(9,9,15,${trailAlpha})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const now = performance.now();
-  const sm  = (tempo - 60) / 140 * 2.0 + 0.3;
+  const sm = (tempo - 60) / 140 * 2.0 + 0.3;
 
-  tickBeat(valence, energy, now);
-  drawRipples(now);
   drawWaves(valence, energy, tempo);
   adjustParticleCount();
   drawConnections(valence, energy);
@@ -821,6 +740,7 @@ function animLoop() {
    un canvas offscreen y lo aplica como glow de fondo
 ══════════════════════════════════════════════════ */
 let lastAlbumUrl = null;
+let albumH = null; /* tono dominante del álbum en HSL (null = usar paleta Iris) */
 
 function extractAlbumColor(imgUrl) {
   if (!imgUrl || imgUrl === lastAlbumUrl) return;
@@ -829,34 +749,73 @@ function extractAlbumColor(imgUrl) {
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
-    const size = 24; /* muestrea a baja resolución para velocidad */
-    const offscreen = document.createElement('canvas');
-    offscreen.width = offscreen.height = size;
-    const octx = offscreen.getContext('2d');
+    /* Muestrea la imagen a 32x32 para obtener el color dominante */
+    const size = 32;
+    const off  = document.createElement('canvas');
+    off.width  = off.height = size;
+    const octx = off.getContext('2d');
     octx.drawImage(img, 0, 0, size, size);
     const data = octx.getImageData(0, 0, size, size).data;
 
-    /* promedio de píxeles ignorando muy oscuros y muy claros */
-    let r = 0, g = 0, b = 0, count = 0;
+    /* Acumula solo píxeles con saturación decente — evita grises y blancos */
+    let rSum = 0, gSum = 0, bSum = 0, count = 0;
     for (let i = 0; i < data.length; i += 4) {
-      const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
-      if (brightness > 30 && brightness < 230) {
-        r += data[i]; g += data[i+1]; b += data[i+2]; count++;
+      const r = data[i], g = data[i+1], b = data[i+2];
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const brightness  = (max + min) / 2;
+      const saturation  = max === min ? 0 : (max - min) / (255 - Math.abs(2 * brightness - 255));
+      /* Solo píxeles con saturación > 15% y brillo medio */
+      if (saturation > 0.15 && brightness > 25 && brightness < 230) {
+        rSum += r; gSum += g; bSum += b; count++;
       }
     }
-    if (!count) return;
-    r = Math.round(r / count);
-    g = Math.round(g / count);
-    b = Math.round(b / count);
 
-    /* aplica como glow muy suave — no reemplaza el fondo, lo tiñe */
+    /* Si no hay suficientes píxeles saturados, usar toda la imagen */
+    if (count < 20) {
+      rSum = 0; gSum = 0; bSum = 0; count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const br = (data[i] + data[i+1] + data[i+2]) / 3;
+        if (br > 20 && br < 235) { rSum += data[i]; gSum += data[i+1]; bSum += data[i+2]; count++; }
+      }
+    }
+
+    if (!count) return;
+    const r = rSum / count, g = gSum / count, b = bSum / count;
+
+    /* Convertir RGB → H (tono) en grados */
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
+    let h = 0;
+    if (delta > 0) {
+      if (max === r) h = ((g - b) / delta) % 6;
+      else if (max === g) h = (b - r) / delta + 2;
+      else h = (r - g) / delta + 4;
+      h = Math.round(h * 60);
+      if (h < 0) h += 360;
+    }
+    albumH = h;
+
+    /* Glow de fondo sutil */
     const glow = document.getElementById('album-glow');
     glow.style.background =
-      `radial-gradient(ellipse 70% 60% at 50% 100%, rgba(${r},${g},${b},0.18) 0%, transparent 70%),` +
-      `radial-gradient(ellipse 40% 30% at 20% 20%, rgba(${r},${g},${b},0.08) 0%, transparent 60%)`;
+      `radial-gradient(ellipse 80% 55% at 50% 100%, rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},0.22) 0%, transparent 70%),` +
+      `radial-gradient(ellipse 45% 35% at 15% 15%, rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},0.1) 0%, transparent 60%)`;
   };
   img.onerror = () => {};
   img.src = imgUrl;
+}
+
+/* Color principal de la visualización:
+   Si hay álbum cargado usa su tono, si no usa la paleta Iris (lavanda→coral) */
+function vizColor(valence, alpha = 1) {
+  if (albumH !== null) {
+    /* Varía el tono ±30° según valencia para mantener la dimensión emocional */
+    const h = (albumH + (valence - 0.5) * 60 + 360) % 360;
+    const s = Math.round(70 + valence * 20);
+    const l = Math.round(55 + valence * 12);
+    return `hsla(${h},${s}%,${l}%,${alpha})`;
+  }
+  /* Fallback: paleta Iris original */
+  return emotionColor(valence, alpha);
 }
 
 /* ══════════════════════════════════════════════════
@@ -1080,7 +1039,7 @@ function initApp() {
 function disconnect() {
   clearInterval(pollInterval);
   sessionStorage.clear();
-  lastTrackId = null; lastFeatures = null; lastAlbumUrl = null;
+  lastTrackId = null; lastFeatures = null; lastAlbumUrl = null; albumH = null;
   emotionHistory.length = 0;
   targetState = { tempo: 80, energy: 0.2, valence: 0.5, active: false };
   document.getElementById('album-glow').style.background = '';
