@@ -1,540 +1,356 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Emotion Visualizer</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Syne:wght@300;400;500;700&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Emotion Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@300;400;500;700&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-      :root {
-        --clr-bg: #09090f;
-        --clr-surface: #1a1a2e;
-        --clr-glass-bg: rgba(26, 26, 46, 0.72);
-        --clr-glass-border: rgba(196, 181, 253, 0.13);
-        --clr-text: #e2deff;
-        --clr-muted: rgba(196, 181, 253, 0.48);
-        --clr-accent: #7b6cff;
-        --clr-accent-light: #c4b5fd;
-        --clr-warm: #ff7e6b;
-        --font-display: "Syne", system-ui, sans-serif;
-        --font-mono: "IBM Plex Mono", "Courier New", monospace;
-        --blur: blur(28px);
-      }
+:root {
+  --clr-bg: #09090f;
+  --clr-surface: #1a1a2e;
+  --clr-glass-bg: rgba(26,26,46,0.72);
+  --clr-glass-border: rgba(196,181,253,0.13);
+  --clr-text: #e2deff;
+  --clr-muted: rgba(196,181,253,0.48);
+  --clr-accent: #7b6cff;
+  --clr-accent-light: #c4b5fd;
+  --clr-warm: #ff7e6b;
+  --font-display: 'Syne', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --blur: blur(28px);
+}
 
-      html,
-      body {
-        width: 100%;
-        height: 100%;
-        background: var(--clr-bg);
-        color: var(--clr-text);
-        font-family: var(--font-mono);
-        overflow: hidden;
-      }
+html, body {
+  width: 100%; height: 100%;
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  font-family: var(--font-mono);
+  overflow: hidden;
+}
 
-      canvas#viz {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        width: 100%;
-        height: 100%;
-      }
+canvas#viz {
+  position: fixed; inset: 0; z-index: 0;
+  width: 100%; height: 100%;
+}
 
-      /* SETUP OVERLAY */
-      #setup-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 40;
-        background: var(--clr-bg);
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1.6rem;
-        padding: 2rem;
-      }
-      #setup-overlay h2 {
-        font-family: var(--font-display);
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: var(--clr-accent-light);
-        letter-spacing: -0.02em;
-      }
-      .setup-box {
-        width: min(540px, 92vw);
-        background: var(--clr-glass-bg);
-        backdrop-filter: var(--blur);
-        border: 1px solid var(--clr-glass-border);
-        border-radius: 14px;
-        padding: 1.5rem 1.8rem;
-        font-size: 0.78rem;
-        color: var(--clr-muted);
-        line-height: 2.1;
-      }
-      .setup-box strong {
-        color: var(--clr-accent-light);
-        font-weight: 500;
-      }
-      .setup-box code {
-        color: var(--clr-accent-light);
-        font-family: var(--font-mono);
-        font-size: 0.72rem;
-        background: rgba(123, 108, 255, 0.12);
-        padding: 1px 7px;
-        border-radius: 4px;
-      }
-      .setup-box a {
-        color: var(--clr-accent-light);
-      }
+/* SETUP OVERLAY */
+#setup-overlay {
+  position: fixed; inset: 0; z-index: 40;
+  background: var(--clr-bg);
+  display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 1.6rem; padding: 2rem;
+}
+#setup-overlay h2 {
+  font-family: var(--font-display); font-size: 1.4rem; font-weight: 700;
+  color: var(--clr-accent-light); letter-spacing: -0.02em;
+}
+.setup-box {
+  width: min(540px, 92vw);
+  background: var(--clr-glass-bg); backdrop-filter: var(--blur);
+  border: 1px solid var(--clr-glass-border); border-radius: 14px;
+  padding: 1.5rem 1.8rem; font-size: 0.78rem;
+  color: var(--clr-muted); line-height: 2.1;
+}
+.setup-box strong { color: var(--clr-accent-light); font-weight: 500; }
+.setup-box code {
+  color: var(--clr-accent-light); font-family: var(--font-mono); font-size: 0.72rem;
+  background: rgba(123,108,255,0.12); padding: 1px 7px; border-radius: 4px;
+}
+.setup-box a { color: var(--clr-accent-light); }
 
-      /* CONNECT SCREEN */
-      #connect-screen {
-        position: fixed;
-        inset: 0;
-        z-index: 20;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 2.2rem;
-        background: var(--clr-bg);
-        transition: opacity 0.7s ease;
-      }
-      #connect-screen.hidden {
-        opacity: 0;
-        pointer-events: none;
-      }
+/* CONNECT SCREEN */
+#connect-screen {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2rem;
+  background: var(--clr-bg);
+  transition: opacity 0.7s ease;
+}
+#connect-screen.hidden { opacity: 0; pointer-events: none; }
 
-      .logo-orbit {
-        position: relative;
-        width: 88px;
-        height: 88px;
-      }
-      .logo-orbit svg {
-        width: 100%;
-        height: 100%;
-      }
-      .orbit-ring {
-        animation: spin-slow 14s linear infinite;
-        transform-origin: 44px 44px;
-      }
-      @keyframes spin-slow {
-        to {
-          transform: rotate(360deg);
-        }
-      }
+/* partículas de fondo decorativas en la pantalla de inicio */
+#connect-screen::before {
+  content: '';
+  position: absolute; inset: 0; z-index: -1;
+  background:
+    radial-gradient(ellipse 55% 40% at 20% 30%, rgba(123,108,255,0.13) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 35% at 80% 70%, rgba(255,126,107,0.11) 0%, transparent 70%),
+    radial-gradient(ellipse 30% 25% at 60% 20%, rgba(255,126,107,0.07) 0%, transparent 60%);
+}
 
-      .title-block {
-        text-align: center;
-      }
-      .title-block h1 {
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: clamp(2.2rem, 5vw, 3.8rem);
-        letter-spacing: -0.03em;
-        color: var(--clr-text);
-        line-height: 1;
-      }
-      .title-block h1 em {
-        font-style: normal;
-        font-weight: 300;
-        color: var(--clr-accent-light);
-        display: block;
-        letter-spacing: 0.01em;
-      }
-      .title-block p {
-        margin-top: 0.8rem;
-        font-size: 0.72rem;
-        letter-spacing: 0.14em;
-        color: var(--clr-muted);
-        text-transform: uppercase;
-      }
+.logo-orbit {
+  position: relative; width: 110px; height: 110px;
+}
+.logo-orbit svg { width: 100%; height: 100%; }
+.orbit-ring-slow { animation: spin-slow 16s linear infinite; transform-origin: 55px 55px; }
+.orbit-ring-fast { animation: spin-fast 7s linear infinite reverse; transform-origin: 55px 55px; }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+@keyframes spin-fast { to { transform: rotate(360deg); } }
 
-      .btn-connect {
-        display: flex;
-        align-items: center;
-        gap: 0.7rem;
-        padding: 0.9rem 2.2rem;
-        background: rgba(123, 108, 255, 0.1);
-        border: 1px solid rgba(123, 108, 255, 0.5);
-        border-radius: 100px;
-        color: var(--clr-accent-light);
-        font-family: var(--font-display);
-        font-size: 0.82rem;
-        font-weight: 500;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition:
-          background 0.2s,
-          border-color 0.2s,
-          transform 0.15s,
-          box-shadow 0.2s;
-      }
-      .btn-connect:hover {
-        background: rgba(123, 108, 255, 0.2);
-        border-color: rgba(123, 108, 255, 0.85);
-        transform: translateY(-2px);
-        box-shadow: 0 0 32px rgba(123, 108, 255, 0.2);
-      }
-      .btn-connect:active {
-        transform: translateY(0);
-      }
+.title-block { text-align: center; }
+.title-block h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  letter-spacing: -0.03em;
+  color: var(--clr-text);
+  line-height: 1.0;
+}
+.title-block h1 em {
+  font-style: normal; font-weight: 300;
+  color: var(--clr-warm);           /* ← coral en el subtítulo */
+  display: block; letter-spacing: 0.01em;
+}
+.title-block p {
+  margin-top: 0.9rem; font-size: 0.72rem;
+  letter-spacing: 0.14em; color: var(--clr-muted); text-transform: uppercase;
+}
+/* dos puntos decorativos de color bajo el título */
+.title-dots {
+  display: flex; gap: 6px; justify-content: center; margin-top: 0.7rem;
+}
+.title-dots span {
+  width: 5px; height: 5px; border-radius: 50%;
+}
 
-      .privacy-note {
-        width: min(360px, 88vw);
-        border: 1px solid var(--clr-glass-border);
-        border-radius: 10px;
-        padding: 0.9rem 1.2rem;
-        background: var(--clr-glass-bg);
-        backdrop-filter: var(--blur);
-        font-size: 0.7rem;
-        line-height: 1.85;
-        color: var(--clr-muted);
-        text-align: center;
-      }
+/* botón principal: coral protagonista */
+.btn-connect {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.95rem 2.4rem;
+  background: rgba(255,126,107,0.12);
+  border: 1px solid rgba(255,126,107,0.55);
+  border-radius: 100px;
+  color: #ffb4a6;
+  font-family: var(--font-display); font-size: 0.82rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.btn-connect:hover {
+  background: rgba(255,126,107,0.22);
+  border-color: rgba(255,126,107,0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 0 36px rgba(255,126,107,0.22);
+}
+.btn-connect:active { transform: translateY(0); }
 
-      /* DASHBOARD */
-      #dashboard {
-        position: fixed;
-        bottom: 2rem;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 10;
-        width: min(720px, calc(100vw - 2rem));
-        background: var(--clr-glass-bg);
-        backdrop-filter: var(--blur);
-        border: 1px solid var(--clr-glass-border);
-        border-radius: 18px;
-        padding: 1.25rem 1.6rem;
-        display: none;
-        gap: 1.4rem;
-        align-items: center;
-        opacity: 0;
-        transition: opacity 0.6s ease;
-      }
-      #dashboard.visible {
-        display: flex;
-        opacity: 1;
-      }
+.privacy-note {
+  width: min(340px, 88vw);
+  border: 1px solid var(--clr-glass-border);
+  border-radius: 10px; padding: 0.85rem 1.2rem;
+  background: var(--clr-glass-bg); backdrop-filter: var(--blur);
+  font-size: 0.68rem; line-height: 1.9;
+  color: var(--clr-muted); text-align: center;
+}
+/* acento coral en el texto de privacidad */
+.privacy-note strong { color: var(--clr-warm); font-weight: 400; }
 
-      .album-art {
-        flex-shrink: 0;
-        width: 72px;
-        height: 72px;
-        border-radius: 10px;
-        background: rgba(123, 108, 255, 0.08);
-        border: 1px solid var(--clr-glass-border);
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .album-art img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: 10px;
-        display: block;
-      }
+/* DASHBOARD */
+#dashboard {
+  position: fixed; bottom: 2rem; left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: min(720px, calc(100vw - 2rem));
+  background: var(--clr-glass-bg);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--clr-glass-border);
+  border-radius: 18px;
+  padding: 1.25rem 1.6rem;
+  display: none; gap: 1.4rem; align-items: center;
+  opacity: 0; transition: opacity 0.6s ease;
+}
+#dashboard.visible { display: flex; opacity: 1; }
 
-      .track-info {
-        flex: 1;
-        min-width: 0;
-      }
-      .track-name {
-        font-family: var(--font-display);
-        font-size: 0.98rem;
-        font-weight: 500;
-        letter-spacing: -0.01em;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: var(--clr-text);
-      }
-      .track-artist {
-        font-size: 0.7rem;
-        letter-spacing: 0.06em;
-        color: var(--clr-muted);
-        margin-top: 3px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .progress-bar-wrap {
-        margin-top: 0.65rem;
-        height: 2px;
-        background: rgba(196, 181, 253, 0.1);
-        border-radius: 99px;
-      }
-      .progress-bar-fill {
-        height: 100%;
-        background: var(--clr-accent);
-        border-radius: 99px;
-        transition: width 1s linear;
-        width: 0%;
-      }
-      .status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 0.6rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--clr-muted);
-        margin-top: 0.45rem;
-      }
-      .status-dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: var(--clr-muted);
-        transition: background 0.3s;
-      }
-      .status-dot.playing {
-        background: #a78bfa;
-        animation: pulse 1.5s ease infinite;
-      }
-      .status-dot.paused {
-        background: var(--clr-warm);
-      }
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.25;
-        }
-      }
+.album-art {
+  flex-shrink: 0; width: 72px; height: 72px;
+  border-radius: 10px;
+  background: rgba(123,108,255,0.08);
+  border: 1px solid var(--clr-glass-border);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.album-art img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; display: block; }
 
-      .metrics {
-        display: flex;
-        flex-direction: column;
-        gap: 0.6rem;
-        flex-shrink: 0;
-        width: 190px;
-      }
-      .metric-row {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-      .metric-label {
-        font-size: 0.6rem;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--clr-muted);
-        display: flex;
-        justify-content: space-between;
-      }
-      .metric-label span:last-child {
-        color: var(--clr-text);
-      }
-      .metric-bar-track {
-        height: 2px;
-        background: rgba(196, 181, 253, 0.1);
-        border-radius: 99px;
-      }
-      .metric-bar-fill {
-        height: 100%;
-        border-radius: 99px;
-        transition:
-          width 1.2s ease,
-          background-color 1.2s ease;
-      }
+.track-info { flex: 1; min-width: 0; }
+.track-name {
+  font-family: var(--font-display); font-size: 0.98rem; font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--clr-text);
+}
+.track-artist {
+  font-size: 0.7rem; letter-spacing: 0.06em; color: var(--clr-muted);
+  margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.progress-bar-wrap {
+  margin-top: 0.65rem; height: 2px;
+  background: rgba(196,181,253,0.1); border-radius: 99px;
+}
+.progress-bar-fill {
+  height: 100%; background: var(--clr-accent);
+  border-radius: 99px; transition: width 1s linear; width: 0%;
+}
+.status-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--clr-muted); margin-top: 0.45rem;
+}
+.status-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--clr-muted); transition: background 0.3s;
+}
+.status-dot.playing { background: #a78bfa; animation: pulse 1.5s ease infinite; }
+.status-dot.paused  { background: var(--clr-warm); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
 
-      .btn-disconnect {
-        flex-shrink: 0;
-        align-self: flex-start;
-        background: transparent;
-        border: 1px solid var(--clr-glass-border);
-        border-radius: 6px;
-        padding: 0.35rem 0.65rem;
-        color: var(--clr-muted);
-        font-family: var(--font-mono);
-        font-size: 0.62rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition:
-          border-color 0.2s,
-          color 0.2s;
-      }
-      .btn-disconnect:hover {
-        border-color: rgba(255, 100, 100, 0.4);
-        color: rgba(255, 130, 130, 0.8);
-      }
+.metrics { display: flex; flex-direction: column; gap: 0.6rem; flex-shrink: 0; width: 190px; }
+.metric-row { display: flex; flex-direction: column; gap: 4px; }
+.metric-label {
+  font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--clr-muted); display: flex; justify-content: space-between;
+}
+.metric-label span:last-child { color: var(--clr-text); }
+.metric-bar-track { height: 2px; background: rgba(196,181,253,0.1); border-radius: 99px; }
+.metric-bar-fill {
+  height: 100%; border-radius: 99px;
+  transition: width 1.2s ease, background-color 1.2s ease;
+}
 
-      #error-toast {
-        position: fixed;
-        top: 1.5rem;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 30;
-        background: rgba(20, 5, 5, 0.9);
-        backdrop-filter: var(--blur);
-        border: 1px solid rgba(255, 80, 80, 0.3);
-        border-radius: 8px;
-        padding: 0.75rem 1.4rem;
-        font-size: 0.76rem;
-        color: rgba(255, 150, 150, 0.9);
-        display: none;
-        white-space: nowrap;
-        font-family: var(--font-mono);
-      }
-      #error-toast.visible {
-        display: block;
-      }
-    </style>
-  </head>
-  <body>
-    <canvas id="viz"></canvas>
+.btn-disconnect {
+  flex-shrink: 0; align-self: flex-start;
+  background: transparent; border: 1px solid var(--clr-glass-border);
+  border-radius: 6px; padding: 0.35rem 0.65rem;
+  color: var(--clr-muted); font-family: var(--font-mono);
+  font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; transition: border-color 0.2s, color 0.2s;
+}
+.btn-disconnect:hover { border-color: rgba(255,100,100,0.4); color: rgba(255,130,130,0.8); }
 
-    <!-- SETUP: visible solo si CLIENT_ID no está configurado -->
-    <div id="setup-overlay">
-      <h2>Configuración requerida</h2>
-      <div class="setup-box">
-        <strong
-          >Este archivo necesita estar alojado en un servidor https:// para
-          funcionar.</strong
-        ><br />
-        No funciona abierto directamente como archivo local
-        (<code>file://</code>).<br /><br />
+#error-toast {
+  position: fixed; top: 1.5rem; left: 50%; transform: translateX(-50%);
+  z-index: 30; background: rgba(20,5,5,0.9); backdrop-filter: var(--blur);
+  border: 1px solid rgba(255,80,80,0.3); border-radius: 8px;
+  padding: 0.75rem 1.4rem; font-size: 0.76rem; color: rgba(255,150,150,0.9);
+  display: none; white-space: nowrap; font-family: var(--font-mono);
+}
+#error-toast.visible { display: block; }
+</style>
+</head>
+<body>
 
-        <strong>Pasos para desplegarlo (gratis):</strong><br />
-        1. Ve a
-        <a href="https://developer.spotify.com/dashboard" target="_blank"
-          >developer.spotify.com/dashboard</a
-        >
-        → Crea una app.<br />
-        2. Copia tu <strong>Client ID</strong> y reemplaza
-        <code>TU_CLIENT_ID_AQUI</code> en la línea del script.<br />
-        3. Sube este archivo a <strong>GitHub Pages</strong>,
-        <strong>Netlify</strong> o <strong>Vercel</strong> (todos gratis).<br />
-        4. En tu app de Spotify, agrega la URL del deploy como
-        <strong>Redirect URI</strong>.<br />
-        5. Cualquier usuario podrá entrar con su propia cuenta de Spotify.
-      </div>
+<canvas id="viz"></canvas>
+
+<!-- SETUP: visible solo si CLIENT_ID no está configurado -->
+<div id="setup-overlay">
+  <h2>Configuración requerida</h2>
+  <div class="setup-box">
+    <strong>Este archivo necesita estar alojado en un servidor https:// para funcionar.</strong><br/>
+    No funciona abierto directamente como archivo local (<code>file://</code>).<br/><br/>
+
+    <strong>Pasos para desplegarlo (gratis):</strong><br/>
+    1. Ve a <a href="https://developer.spotify.com/dashboard" target="_blank">developer.spotify.com/dashboard</a> → Crea una app.<br/>
+    2. Copia tu <strong>Client ID</strong> y reemplaza <code>TU_CLIENT_ID_AQUI</code> en la línea del script.<br/>
+    3. Sube este archivo a <strong>GitHub Pages</strong>, <strong>Netlify</strong> o <strong>Vercel</strong> (todos gratis).<br/>
+    4. En tu app de Spotify, agrega la URL del deploy como <strong>Redirect URI</strong>.<br/>
+    5. Cualquier usuario podrá entrar con su propia cuenta de Spotify.
+  </div>
+</div>
+
+<!-- PANTALLA DE INICIO -->
+<div id="connect-screen">
+  <div class="logo-orbit">
+    <svg viewBox="0 0 110 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- anillos estáticos -->
+      <circle cx="55" cy="55" r="53" stroke="rgba(123,108,255,0.18)" stroke-width="1"/>
+      <circle cx="55" cy="55" r="36" stroke="rgba(255,126,107,0.2)" stroke-width="1" stroke-dasharray="4 5"/>
+      <!-- núcleo: mezcla lavanda + coral -->
+      <circle cx="55" cy="55" r="9" fill="rgba(123,108,255,0.5)"/>
+      <circle cx="55" cy="55" r="5" fill="rgba(255,126,107,0.75)"/>
+      <!-- anillo lento: puntos lavanda -->
+      <g class="orbit-ring-slow">
+        <circle cx="55" cy="2"   r="4"   fill="rgba(196,181,253,0.65)"/>
+        <circle cx="108" cy="55" r="2.5" fill="rgba(196,181,253,0.4)"/>
+        <circle cx="55" cy="108" r="3"   fill="rgba(196,181,253,0.5)"/>
+        <circle cx="2"  cy="55"  r="2"   fill="rgba(196,181,253,0.35)"/>
+      </g>
+      <!-- anillo rápido: puntos coral -->
+      <g class="orbit-ring-fast">
+        <circle cx="91" cy="20" r="3.5" fill="rgba(255,126,107,0.8)"/>
+        <circle cx="91" cy="90" r="2"   fill="rgba(255,126,107,0.5)"/>
+        <circle cx="19" cy="55" r="2.5" fill="rgba(255,126,107,0.4)"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="title-block">
+    <h1>Emotion<em>Visualizer</em></h1>
+    <p>Conecta tu Spotify · Visualiza tu música</p>
+    <div class="title-dots">
+      <span style="background:#7b6cff;"></span>
+      <span style="background:#ff7e6b;"></span>
+      <span style="background:#c4b5fd;"></span>
     </div>
+  </div>
 
-    <!-- PANTALLA DE INICIO -->
-    <div id="connect-screen">
-      <div class="logo-orbit">
-        <svg viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle
-            cx="44"
-            cy="44"
-            r="43"
-            stroke="rgba(123,108,255,0.2)"
-            stroke-width="1"
-          />
-          <circle
-            cx="44"
-            cy="44"
-            r="28"
-            stroke="rgba(196,181,253,0.15)"
-            stroke-width="1"
-          />
-          <circle cx="44" cy="44" r="6" fill="rgba(123,108,255,0.6)" />
-          <g class="orbit-ring">
-            <circle cx="44" cy="1" r="3.5" fill="rgba(196,181,253,0.5)" />
-            <circle cx="87" cy="44" r="2" fill="rgba(255,126,107,0.4)" />
-            <circle cx="44" cy="87" r="2.5" fill="rgba(123,108,255,0.35)" />
-          </g>
-        </svg>
-      </div>
+  <button class="btn-connect" id="btn-connect">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.45-1.493c3.633-1.102 8.147-.568 11.23 1.329a.78.78 0 01.257 1.073zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 11-.542-1.79c3.532-1.072 9.404-.865 13.115 1.337a.934.934 0 11-.955 1.609z"/>
+    </svg>
+    Iniciar sesión con Spotify
+  </button>
 
-      <div class="title-block">
-        <h1>Emotion<em>Visualizer</em></h1>
-        <p>Conecta tu Spotify · Visualiza tu música</p>
-      </div>
+  <div class="privacy-note">
+    Tus datos de escucha <strong>nunca se almacenan</strong>.<br/>
+    Solo leemos la canción activa en tiempo real.
+  </div>
+</div>
 
-      <button class="btn-connect" id="btn-connect">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-          <path
-            d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.45-1.493c3.633-1.102 8.147-.568 11.23 1.329a.78.78 0 01.257 1.073zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 11-.542-1.79c3.532-1.072 9.404-.865 13.115 1.337a.934.934 0 11-.955 1.609z"
-          />
-        </svg>
-        Iniciar sesión con Spotify
-      </button>
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="album-art" id="album-art-wrap">
+    <span style="font-size:1.5rem;opacity:0.2">♪</span>
+  </div>
 
-      <div class="privacy-note">
-        Tus datos de escucha nunca se almacenan.<br />
-        Solo leemos la canción activa en tiempo real.
-      </div>
+  <div class="track-info">
+    <div class="track-name" id="track-name">—</div>
+    <div class="track-artist" id="track-artist">—</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill"></div>
     </div>
-
-    <!-- DASHBOARD -->
-    <div id="dashboard">
-      <div class="album-art" id="album-art-wrap">
-        <span style="font-size: 1.5rem; opacity: 0.2">♪</span>
-      </div>
-
-      <div class="track-info">
-        <div class="track-name" id="track-name">—</div>
-        <div class="track-artist" id="track-artist">—</div>
-        <div class="progress-bar-wrap">
-          <div class="progress-bar-fill" id="progress-fill"></div>
-        </div>
-        <div class="status-pill">
-          <div class="status-dot" id="status-dot"></div>
-          <span id="status-text">sin actividad</span>
-        </div>
-      </div>
-
-      <div class="metrics">
-        <div class="metric-row">
-          <div class="metric-label">
-            <span>Tempo</span><span id="metric-tempo-val">—</span>
-          </div>
-          <div class="metric-bar-track">
-            <div class="metric-bar-fill" id="bar-tempo" style="width: 0%"></div>
-          </div>
-        </div>
-        <div class="metric-row">
-          <div class="metric-label">
-            <span>Energía</span><span id="metric-energy-val">—</span>
-          </div>
-          <div class="metric-bar-track">
-            <div
-              class="metric-bar-fill"
-              id="bar-energy"
-              style="width: 0%"
-            ></div>
-          </div>
-        </div>
-        <div class="metric-row">
-          <div class="metric-label">
-            <span>Triste ←→ Alegre</span><span id="metric-valence-val">—</span>
-          </div>
-          <div class="metric-bar-track">
-            <div
-              class="metric-bar-fill"
-              id="bar-valence"
-              style="width: 0%"
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      <button class="btn-disconnect" id="btn-disconnect">✕ salir</button>
+    <div class="status-pill">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">sin actividad</span>
     </div>
+  </div>
 
-    <div id="error-toast"></div>
+  <div class="metrics">
+    <div class="metric-row">
+      <div class="metric-label"><span>Tempo</span><span id="metric-tempo-val">—</span></div>
+      <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-tempo" style="width:0%"></div></div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-label"><span>Energía</span><span id="metric-energy-val">—</span></div>
+      <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-energy" style="width:0%"></div></div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-label"><span>Triste ←→ Alegre</span><span id="metric-valence-val">—</span></div>
+      <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-valence" style="width:0%"></div></div>
+    </div>
+  </div>
 
-    <script>
-      /* ══════════════════════════════════════════════════
+  <button class="btn-disconnect" id="btn-disconnect">✕ salir</button>
+</div>
+
+<div id="error-toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════
    1. CONFIG
    ─────────────────────────────────────────────────
    Reemplaza TU_CLIENT_ID_AQUI con el Client ID
@@ -544,538 +360,529 @@
    exactamente con la URL donde despliegas este
    archivo (https://). No funciona en file://.
 ══════════════════════════════════════════════════ */
-      const CLIENT_ID = "ffdf189392ad4dccb98d6e40530a322c";
-      const REDIRECT_URI = location.origin + location.pathname;
-      const SCOPES = "user-read-currently-playing user-read-playback-state";
+const CLIENT_ID    = 'ffdf189392ad4dccb98d6e40530a322c';
+const REDIRECT_URI = location.origin + location.pathname;
+const SCOPES       = 'user-read-currently-playing user-read-playback-state';
 
-      if (CLIENT_ID === "TU_CLIENT_ID_AQUI") {
-        document.getElementById("setup-overlay").style.display = "flex";
-        document.getElementById("connect-screen").style.display = "none";
-      }
-
-      /* ══════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════
    2. AUTH — PKCE (sin backend requerido)
 ══════════════════════════════════════════════════ */
-      function generateCodeVerifier(len = 64) {
-        const chars =
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-        const arr = new Uint8Array(len);
-        crypto.getRandomValues(arr);
-        return Array.from(arr, (b) => chars[b % chars.length]).join("");
-      }
+function generateCodeVerifier(len = 64) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => chars[b % chars.length]).join('');
+}
 
-      async function generateCodeChallenge(verifier) {
-        const digest = await crypto.subtle.digest(
-          "SHA-256",
-          new TextEncoder().encode(verifier),
-        );
-        return btoa(String.fromCharCode(...new Uint8Array(digest)))
-          .replace(/\+/g, "-")
-          .replace(/\//g, "_")
-          .replace(/=+$/, "");
-      }
+async function generateCodeChallenge(verifier) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 
-      async function startLogin() {
-        const verifier = generateCodeVerifier();
-        const challenge = await generateCodeChallenge(verifier);
-        sessionStorage.setItem("pkce_verifier", verifier);
-        const params = new URLSearchParams({
-          client_id: CLIENT_ID,
-          response_type: "code",
-          redirect_uri: REDIRECT_URI,
-          code_challenge_method: "S256",
-          code_challenge: challenge,
-          scope: SCOPES,
-          show_dialog: "false",
-        });
-        location.href = "https://accounts.spotify.com/authorize?" + params;
-      }
+async function startLogin() {
+  const verifier  = generateCodeVerifier();
+  const challenge = await generateCodeChallenge(verifier);
+  sessionStorage.setItem('pkce_verifier', verifier);
+  const params = new URLSearchParams({
+    client_id:             CLIENT_ID,
+    response_type:         'code',
+    redirect_uri:          REDIRECT_URI,
+    code_challenge_method: 'S256',
+    code_challenge:        challenge,
+    scope:                 SCOPES,
+    show_dialog:           'false',
+  });
+  location.href = 'https://accounts.spotify.com/authorize?' + params;
+}
 
-      async function handleCallback(code) {
-        const verifier = sessionStorage.getItem("pkce_verifier");
-        if (!verifier) {
-          showError("Error de autenticación. Intenta de nuevo.");
-          return;
-        }
+async function handleCallback(code) {
+  const verifier = sessionStorage.getItem('pkce_verifier');
+  if (!verifier) { showError('Error de autenticación. Intenta de nuevo.'); return; }
 
-        const res = await fetch("https://accounts.spotify.com/api/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            client_id: CLIENT_ID,
-            grant_type: "authorization_code",
-            code,
-            redirect_uri: REDIRECT_URI,
-            code_verifier: verifier,
-          }),
-        });
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     CLIENT_ID,
+      grant_type:    'authorization_code',
+      code,
+      redirect_uri:  REDIRECT_URI,
+      code_verifier: verifier,
+    }),
+  });
 
-        if (!res.ok) {
-          showError("No se pudo obtener el token. Intenta de nuevo.");
-          return;
-        }
-        const data = await res.json();
+  if (!res.ok) { showError('No se pudo obtener el token. Intenta de nuevo.'); return; }
+  const data = await res.json();
 
-        sessionStorage.setItem("access_token", data.access_token);
-        sessionStorage.setItem("refresh_token", data.refresh_token || "");
-        sessionStorage.setItem(
-          "token_expiry",
-          Date.now() + data.expires_in * 1000,
-        );
-        sessionStorage.removeItem("pkce_verifier");
+  sessionStorage.setItem('access_token',  data.access_token);
+  sessionStorage.setItem('refresh_token', data.refresh_token || '');
+  sessionStorage.setItem('token_expiry',  Date.now() + data.expires_in * 1000);
+  sessionStorage.removeItem('pkce_verifier');
 
-        history.replaceState({}, "", location.pathname);
-        initApp();
-      }
+  history.replaceState({}, '', location.pathname);
+  initApp();
+}
 
-      async function tryRefreshToken() {
-        const rt = sessionStorage.getItem("refresh_token");
-        if (!rt) return false;
-        const res = await fetch("https://accounts.spotify.com/api/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            client_id: CLIENT_ID,
-            grant_type: "refresh_token",
-            refresh_token: rt,
-          }),
-        });
-        if (!res.ok) return false;
-        const data = await res.json();
-        sessionStorage.setItem("access_token", data.access_token);
-        sessionStorage.setItem(
-          "token_expiry",
-          Date.now() + data.expires_in * 1000,
-        );
-        if (data.refresh_token)
-          sessionStorage.setItem("refresh_token", data.refresh_token);
-        return true;
-      }
+async function tryRefreshToken() {
+  const rt = sessionStorage.getItem('refresh_token');
+  if (!rt) return false;
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     CLIENT_ID,
+      grant_type:    'refresh_token',
+      refresh_token: rt,
+    }),
+  });
+  if (!res.ok) return false;
+  const data = await res.json();
+  sessionStorage.setItem('access_token', data.access_token);
+  sessionStorage.setItem('token_expiry', Date.now() + data.expires_in * 1000);
+  if (data.refresh_token) sessionStorage.setItem('refresh_token', data.refresh_token);
+  return true;
+}
 
-      async function getValidToken() {
-        const expiry = parseInt(sessionStorage.getItem("token_expiry") || "0");
-        if (Date.now() > expiry - 30000) {
-          const ok = await tryRefreshToken();
-          if (!ok) {
-            showError("Sesión expirada. Reconecta.");
-            disconnect();
-            return null;
-          }
-        }
-        return sessionStorage.getItem("access_token");
-      }
+async function getValidToken() {
+  const expiry = parseInt(sessionStorage.getItem('token_expiry') || '0');
+  if (Date.now() > expiry - 30000) {
+    const ok = await tryRefreshToken();
+    if (!ok) { showError('Sesión expirada. Reconecta.'); disconnect(); return null; }
+  }
+  return sessionStorage.getItem('access_token');
+}
 
-      /* ══════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════
    3. SPOTIFY API
 ══════════════════════════════════════════════════ */
-      async function fetchCurrentTrack() {
-        const token = await getValidToken();
-        if (!token) return null;
-        const res = await fetch(
-          "https://api.spotify.com/v1/me/player/currently-playing",
-          {
-            headers: { Authorization: "Bearer " + token },
-          },
-        );
-        if (res.status === 204 || res.status === 202) return null;
-        if (res.status === 401) {
-          disconnect();
-          return null;
-        }
-        if (!res.ok) return null;
-        return res.json();
-      }
+async function fetchCurrentTrack() {
+  const token = await getValidToken();
+  if (!token) return null;
+  const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  if (res.status === 204 || res.status === 202) return null;
+  if (res.status === 401) { disconnect(); return null; }
+  if (!res.ok) return null;
+  return res.json();
+}
 
-      async function fetchTrackDetails(trackId) {
-        /* audio-features fue deprecado por Spotify en Nov 2024.
+async function fetchTrackDetails(trackId) {
+  /* audio-features fue deprecado por Spotify en Nov 2024.
      Derivamos métricas desde el objeto del track:
      - tempo    ← estimado desde duration_ms + track_number (proxy razonable)
      - energy   ← popularity normalizada (0–100 → 0.0–1.0)
      - valence  ← hash determinista del trackId → valor estable por canción
      También intentamos audio-features; si devuelve datos los usamos. */
-        const token = await getValidToken();
-        if (!token) return null;
+  const token = await getValidToken();
+  if (!token) return null;
 
-        /* Intentar audio-features (funciona en algunas apps aún) */
-        try {
-          const af = await fetch(
-            `https://api.spotify.com/v1/audio-features/${trackId}`,
-            {
-              headers: { Authorization: "Bearer " + token },
-            },
-          );
-          if (af.ok) {
-            const d = await af.json();
-            if (d && d.tempo && d.tempo > 0)
-              return {
-                tempo: d.tempo,
-                energy: d.energy,
-                valence: d.valence,
-                source: "api",
-              };
-          }
-        } catch (_) {}
+  /* Intentar audio-features (funciona en algunas apps aún) */
+  try {
+    const af = await fetch(`https://api.spotify.com/v1/audio-features/${trackId}`, {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    if (af.ok) {
+      const d = await af.json();
+      if (d && d.tempo && d.tempo > 0) return { tempo: d.tempo, energy: d.energy, valence: d.valence, source: 'api' };
+    }
+  } catch(_) {}
 
-        /* Fallback: fetch full track para obtener popularity */
-        const res = await fetch(
-          `https://api.spotify.com/v1/tracks/${trackId}`,
-          {
-            headers: { Authorization: "Bearer " + token },
-          },
-        );
-        if (!res.ok) return null;
-        const track = await res.json();
-        return deriveFeatures(track);
-      }
+  /* Fallback: fetch full track para obtener popularity */
+  const res = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  if (!res.ok) return null;
+  const track = await res.json();
+  return deriveFeatures(track);
+}
 
-      function deriveFeatures(track) {
-        /* Derivar métricas musicales plausibles desde metadatos disponibles */
-        const pop = (track.popularity || 50) / 100; // 0–1
+function deriveFeatures(track) {
+  /* Derivar métricas musicales plausibles desde metadatos disponibles */
+  const pop = (track.popularity || 50) / 100;          // 0–1
 
-        /* Tempo: 80–160 BPM. Canciones cortas tienden a ser más rápidas.
+  /* Tempo: 80–160 BPM. Canciones cortas tienden a ser más rápidas.
      duration_ms típico: 150 000 (2:30) → rápido, 300 000 (5:00) → lento */
-        const dur = track.duration_ms || 200000;
-        const tempoRaw = 165 - (dur / 1000) * 0.18; // más corta → más rápida
-        const tempo = Math.min(175, Math.max(72, tempoRaw));
+  const dur = track.duration_ms || 200000;
+  const tempoRaw = 165 - (dur / 1000) * 0.18;          // más corta → más rápida
+  const tempo = Math.min(175, Math.max(72, tempoRaw));
 
-        /* Energía: basada en popularidad + si es explicit */
-        const explicitBoost = track.explicit ? 0.12 : 0;
-        const energy = Math.min(1, pop * 0.85 + explicitBoost + 0.15);
+  /* Energía: basada en popularidad + si es explicit */
+  const explicitBoost = track.explicit ? 0.12 : 0;
+  const energy = Math.min(1, pop * 0.85 + explicitBoost + 0.15);
 
-        /* Valencia: hash determinista del id → valor estable y variado */
-        const id = track.id || "default";
-        let hash = 0;
-        for (let i = 0; i < id.length; i++)
-          hash = (hash * 31 + id.charCodeAt(i)) & 0xffffffff;
-        const valence = (Math.abs(hash) % 1000) / 1000; // 0.0–1.0 estable
+  /* Valencia: hash determinista del id → valor estable y variado */
+  const id = track.id || 'default';
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) & 0xffffffff;
+  const valence = ((Math.abs(hash) % 1000) / 1000);    // 0.0–1.0 estable
 
-        return { tempo, energy, valence, source: "derived" };
-      }
+  return { tempo, energy, valence, source: 'derived' };
+}
 
-      /* ══════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════
    4. PARTICLE SYSTEM
 ══════════════════════════════════════════════════ */
-      const canvas = document.getElementById("viz");
-      const ctx = canvas.getContext("2d");
+const canvas = document.getElementById('viz');
+const ctx    = canvas.getContext('2d');
 
-      let particles = [];
-      let targetState = { tempo: 80, energy: 0.2, valence: 0.5, active: false };
-      let currentState = { ...targetState };
+let particles    = [];
+let targetState  = { tempo: 80, energy: 0.2, valence: 0.5, active: false };
+let currentState = { ...targetState };
 
-      const lerp = (a, b, t) => a + (b - a) * t;
+const lerp = (a, b, t) => a + (b - a) * t;
 
-      function valenceToHSL(v, alpha = 1) {
-        /* lavanda iris (252°) → coral cálido (8°) — saturado y vívido */
-        const h = Math.round(lerp(252, 8, v));
-        const s = Math.round(lerp(80, 95, v));
-        const l = Math.round(lerp(65, 66, v));
-        return `hsla(${h},${s}%,${l}%,${alpha})`;
+/* ── Color: lavanda puro (252°) → coral encendido (5°)
+   El coral ahora domina cuando valence > 0.6         */
+function emotionColor(v, alpha = 1) {
+  const h = Math.round(lerp(252, 5, v));
+  const s = Math.round(lerp(78, 98, v));
+  const l = Math.round(lerp(66, 62, v));
+  return `hsla(${h},${s}%,${l}%,${alpha})`;
+}
+
+/* Color secundario para mix visual — complementario desaturado */
+function emotionColorSoft(v, alpha = 1) {
+  const h = Math.round(lerp(240, 18, v));
+  const s = Math.round(lerp(50, 70, v));
+  const l = Math.round(lerp(75, 70, v));
+  return `hsla(${h},${s}%,${l}%,${alpha})`;
+}
+
+let clock = 0; /* tiempo global para ondas */
+
+class Particle {
+  constructor() { this.init(); }
+
+  init() {
+    this.x  = Math.random() * canvas.width;
+    this.y  = Math.random() * canvas.height;
+    this.ox = this.x; /* origen para oscilación */
+    this.oy = this.y;
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = 0.15 + Math.random() * 0.5;
+    this.vx     = Math.cos(angle) * spd;
+    this.vy     = Math.sin(angle) * spd;
+    this.radius = 1.2 + Math.random() * 3.5;
+    this.alpha  = 0.45 + Math.random() * 0.55;
+    this.phase  = Math.random() * Math.PI * 2; /* fase individual de onda */
+    this.waveAmp = 20 + Math.random() * 60;    /* amplitud de oscilación */
+    this.waveFreq = 0.4 + Math.random() * 1.2; /* frecuencia propia */
+    this.type   = Math.random();               /* 0=libre 0.7=orbitante */
+  }
+
+  update(speedMult, energy, valence, tempo) {
+    const beatHz = tempo / 60;          /* pulsos por segundo */
+    const waveT  = clock * 0.016;       /* segundos aprox */
+
+    if (this.type > 0.72 && currentState.active) {
+      /* ── MODO ORBITAL: giran alrededor de su origen con la onda ── */
+      const orbitR = this.waveAmp * energy;
+      const orbitSpeed = beatHz * this.waveFreq * 0.5;
+      this.x = this.ox + Math.cos(waveT * orbitSpeed + this.phase) * orbitR;
+      this.y = this.oy + Math.sin(waveT * orbitSpeed * 0.7 + this.phase) * orbitR * 0.6;
+
+      /* deriva lenta del origen */
+      this.ox += this.vx * 0.18 * speedMult;
+      this.oy += this.vy * 0.18 * speedMult;
+    } else {
+      /* ── MODO LIBRE: deriva + perturbación sinusoidal transversal ── */
+      const perpX = -this.vy;
+      const perpY =  this.vx;
+      const wobble = Math.sin(waveT * this.waveFreq * beatHz + this.phase)
+                     * this.waveAmp * energy * 0.35;
+
+      this.x += (this.vx * speedMult) + perpX * wobble * 0.05;
+      this.y += (this.vy * speedMult) + perpY * wobble * 0.05;
+    }
+
+    /* rebotar */
+    if (this.x < 0)             { this.x = 0;             this.vx *= -1; this.ox = this.x; }
+    if (this.x > canvas.width)  { this.x = canvas.width;  this.vx *= -1; this.ox = this.x; }
+    if (this.y < 0)             { this.y = 0;             this.vy *= -1; this.oy = this.y; }
+    if (this.y > canvas.height) { this.y = canvas.height; this.vy *= -1; this.oy = this.y; }
+
+    /* pulso de tamaño sincronizado al beat */
+    const beatPulse = 1 + Math.sin(waveT * beatHz * Math.PI * 2 + this.phase) * 0.28 * energy;
+    this.drawRadius = this.radius * beatPulse;
+  }
+
+  draw(valence, active) {
+    if (!active) {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(100,95,145,${this.alpha * 0.32})`;
+      ctx.fill();
+      return;
+    }
+    const r = this.drawRadius || this.radius;
+    /* halo suave detrás */
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, r * 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = emotionColor(valence, this.alpha * 0.08);
+    ctx.fill();
+    /* núcleo */
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = emotionColor(valence, this.alpha);
+    ctx.fill();
+  }
+}
+
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function initParticles(n) {
+  particles = Array.from({ length: n }, () => new Particle());
+}
+
+function adjustParticleCount() {
+  const target = Math.round(40 + currentState.energy * 180);
+  while (particles.length < target) particles.push(new Particle());
+  if (particles.length > target + 12) particles.splice(target);
+}
+
+/* Ondas de fondo — líneas sinusoidales que atraviesan la pantalla */
+function drawWaves(valence, energy, tempo) {
+  if (!currentState.active || energy < 0.1) return;
+  const beatHz  = tempo / 60;
+  const waveT   = clock * 0.016;
+  const nWaves  = Math.round(2 + energy * 4);
+  const spread  = canvas.height / (nWaves + 1);
+
+  for (let w = 0; w < nWaves; w++) {
+    const baseY   = spread * (w + 1);
+    const amp     = 18 + energy * 55 + w * 8;
+    const freq    = 0.006 + w * 0.002;
+    const speed   = beatHz * (0.6 + w * 0.15);
+    const alpha   = (0.04 + energy * 0.07) * (1 - w / (nWaves + 1) * 0.5);
+    const wColor  = w % 2 === 0
+      ? emotionColor(valence, alpha)
+      : emotionColorSoft(valence, alpha * 0.7);
+
+    ctx.beginPath();
+    ctx.moveTo(0, baseY);
+    for (let x = 0; x <= canvas.width; x += 4) {
+      const y = baseY + Math.sin(x * freq + waveT * speed + w * 1.3) * amp
+                      + Math.sin(x * freq * 1.7 + waveT * speed * 0.6 + w) * amp * 0.35;
+      ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = wColor;
+    ctx.lineWidth   = 1 + energy * 1.5;
+    ctx.stroke();
+  }
+}
+
+/* Conexiones entre partículas cercanas */
+function drawConnections(valence, energy) {
+  const maxDist = 90 + energy * 40;
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const d = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
+      if (d < maxDist) {
+        const a = (1 - d / maxDist) * 0.18 * energy;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = currentState.active
+          ? emotionColor(valence, a)
+          : `rgba(100,95,145,${a * 0.4})`;
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
       }
+    }
+  }
+}
 
-      class Particle {
-        constructor() {
-          this.reset();
-        }
-        reset() {
-          this.x = Math.random() * canvas.width;
-          this.y = Math.random() * canvas.height;
-          const angle = Math.random() * Math.PI * 2;
-          const speed = 0.2 + Math.random() * 0.6;
-          this.vx = Math.cos(angle) * speed;
-          this.vy = Math.sin(angle) * speed;
-          this.radius = 1 + Math.random() * 3;
-          this.alpha = 0.4 + Math.random() * 0.6;
-        }
-        update(sm) {
-          this.x += this.vx * sm;
-          this.y += this.vy * sm;
-          if (this.x < 0) {
-            this.x = 0;
-            this.vx *= -1;
-          }
-          if (this.x > canvas.width) {
-            this.x = canvas.width;
-            this.vx *= -1;
-          }
-          if (this.y < 0) {
-            this.y = 0;
-            this.vy *= -1;
-          }
-          if (this.y > canvas.height) {
-            this.y = canvas.height;
-            this.vy *= -1;
-          }
-        }
-        draw(valence, active) {
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-          ctx.fillStyle = active
-            ? valenceToHSL(valence, this.alpha)
-            : `rgba(100,95,140,${this.alpha * 0.38})`;
-          ctx.fill();
-        }
-      }
+function animLoop() {
+  clock++;
+  const t = 0.018;
+  currentState.tempo   = lerp(currentState.tempo,   targetState.tempo,   t);
+  currentState.energy  = lerp(currentState.energy,  targetState.energy,  t);
+  currentState.valence = lerp(currentState.valence, targetState.valence, t);
+  currentState.active  = targetState.active;
 
-      function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }
+  const { tempo, energy, valence, active } = currentState;
 
-      function initParticles(n) {
-        particles = Array.from({ length: n }, () => new Particle());
-      }
+  /* trail — más corto = estelas más largas */
+  const trailAlpha = active ? 0.12 + (1 - energy) * 0.08 : 0.22;
+  ctx.fillStyle = `rgba(9,9,15,${trailAlpha})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      function adjustParticleCount() {
-        const target = Math.round(30 + currentState.energy * 220);
-        while (particles.length < target) particles.push(new Particle());
-        if (particles.length > target + 10) particles.splice(target);
-      }
+  const sm = (tempo - 60) / 140 * 2.8 + 0.25;
 
-      function drawConnections(valence, active) {
-        for (let i = 0; i < particles.length; i++) {
-          for (let j = i + 1; j < particles.length; j++) {
-            const dx = particles[i].x - particles[j].x;
-            const dy = particles[i].y - particles[j].y;
-            const d = Math.hypot(dx, dy);
-            if (d < 100) {
-              const a = (1 - d / 100) * 0.14;
-              ctx.beginPath();
-              ctx.moveTo(particles[i].x, particles[i].y);
-              ctx.lineTo(particles[j].x, particles[j].y);
-              ctx.strokeStyle = active
-                ? valenceToHSL(valence, a)
-                : `rgba(100,95,140,${a * 0.4})`;
-              ctx.lineWidth = 0.5;
-              ctx.stroke();
-            }
-          }
-        }
-      }
+  drawWaves(valence, energy, tempo);
+  adjustParticleCount();
+  drawConnections(valence, energy);
+  for (const p of particles) {
+    p.update(sm, energy, valence, tempo);
+    p.draw(valence, active);
+  }
 
-      function animLoop() {
-        const t = 0.02;
-        currentState.tempo = lerp(currentState.tempo, targetState.tempo, t);
-        currentState.energy = lerp(currentState.energy, targetState.energy, t);
-        currentState.valence = lerp(
-          currentState.valence,
-          targetState.valence,
-          t,
-        );
-        currentState.active = targetState.active;
+  requestAnimationFrame(animLoop);
+}
 
-        ctx.fillStyle = "rgba(9,9,15,0.17)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        const sm = ((currentState.tempo - 60) / 140) * 2.5 + 0.3;
-        adjustParticleCount();
-        drawConnections(currentState.valence, currentState.active);
-        for (const p of particles) {
-          p.update(sm);
-          p.draw(currentState.valence, currentState.active);
-        }
-        requestAnimationFrame(animLoop);
-      }
-
-      /* ══════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════
    5. UI
 ══════════════════════════════════════════════════ */
-      function updateDashboard(track, features) {
-        if (!track || !track.item) {
-          document.getElementById("track-name").textContent =
-            "Sin reproducción activa";
-          document.getElementById("track-artist").textContent = "";
-          document.getElementById("progress-fill").style.width = "0%";
-          document.getElementById("status-dot").className = "status-dot";
-          document.getElementById("status-text").textContent = "sin actividad";
-          const wrap = document.getElementById("album-art-wrap");
-          wrap.innerHTML =
-            '<span style="font-size:1.5rem;opacity:0.2">♪</span>';
-          targetState = {
-            tempo: 72,
-            energy: 0.15,
-            valence: 0.5,
-            active: false,
-          };
-          renderMetrics(null);
-          return;
-        }
+function updateDashboard(track, features) {
+  if (!track || !track.item) {
+    document.getElementById('track-name').textContent   = 'Sin reproducción activa';
+    document.getElementById('track-artist').textContent = '';
+    document.getElementById('progress-fill').style.width = '0%';
+    document.getElementById('status-dot').className = 'status-dot';
+    document.getElementById('status-text').textContent = 'sin actividad';
+    const wrap = document.getElementById('album-art-wrap');
+    wrap.innerHTML = '<span style="font-size:1.5rem;opacity:0.2">♪</span>';
+    targetState = { tempo: 72, energy: 0.15, valence: 0.5, active: false };
+    renderMetrics(null);
+    return;
+  }
 
-        const item = track.item;
-        const isPlaying = track.is_playing;
-        const wrap = document.getElementById("album-art-wrap");
-        const imgSrc = item.album?.images?.[0]?.url;
+  const item      = track.item;
+  const isPlaying = track.is_playing;
+  const wrap      = document.getElementById('album-art-wrap');
+  const imgSrc    = item.album?.images?.[0]?.url;
 
-        if (imgSrc) {
-          wrap.innerHTML = `<img src="${imgSrc}" alt="portada" />`;
-        } else {
-          wrap.innerHTML =
-            '<span style="font-size:1.5rem;opacity:0.2">♪</span>';
-        }
+  if (imgSrc) {
+    wrap.innerHTML = `<img src="${imgSrc}" alt="portada" />`;
+  } else {
+    wrap.innerHTML = '<span style="font-size:1.5rem;opacity:0.2">♪</span>';
+  }
 
-        document.getElementById("track-name").textContent = item.name || "—";
-        document.getElementById("track-artist").textContent =
-          (item.artists || []).map((a) => a.name).join(", ") || "—";
+  document.getElementById('track-name').textContent   = item.name || '—';
+  document.getElementById('track-artist').textContent =
+    (item.artists || []).map(a => a.name).join(', ') || '—';
 
-        const pct =
-          item.duration_ms > 0
-            ? Math.min(100, (track.progress_ms / item.duration_ms) * 100)
-            : 0;
-        document.getElementById("progress-fill").style.width =
-          pct.toFixed(1) + "%";
+  const pct = item.duration_ms > 0
+    ? Math.min(100, (track.progress_ms / item.duration_ms) * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct.toFixed(1) + '%';
 
-        const dot = document.getElementById("status-dot");
-        const stxt = document.getElementById("status-text");
-        if (isPlaying) {
-          dot.className = "status-dot playing";
-          stxt.textContent = "reproduciendo";
-        } else {
-          dot.className = "status-dot paused";
-          stxt.textContent = "en pausa";
-        }
+  const dot  = document.getElementById('status-dot');
+  const stxt = document.getElementById('status-text');
+  if (isPlaying) { dot.className = 'status-dot playing'; stxt.textContent = 'reproduciendo'; }
+  else           { dot.className = 'status-dot paused';  stxt.textContent = 'en pausa'; }
 
-        if (features) {
-          targetState = {
-            tempo: features.tempo || 80,
-            energy: features.energy ?? 0.5,
-            valence: features.valence ?? 0.5,
-            active: isPlaying,
-          };
-          renderMetrics(features);
-        }
-      }
+  if (features) {
+    targetState = {
+      tempo:   features.tempo   || 80,
+      energy:  features.energy  ?? 0.5,
+      valence: features.valence ?? 0.5,
+      active:  isPlaying,
+    };
+    renderMetrics(features);
+  }
+}
 
-      function renderMetrics(f) {
-        if (!f) {
-          [
-            "metric-tempo-val",
-            "metric-energy-val",
-            "metric-valence-val",
-          ].forEach((id) => (document.getElementById(id).textContent = "—"));
-          ["bar-tempo", "bar-energy", "bar-valence"].forEach(
-            (id) => (document.getElementById(id).style.width = "0%"),
-          );
-          return;
-        }
-        const tempoPct = Math.min(
-          100,
-          Math.max(0, ((f.tempo - 60) / 140) * 100),
-        );
-        const energyPct = f.energy * 100;
-        const valencePct = f.valence * 100;
-        const color = valenceToHSL(f.valence, 1);
+function renderMetrics(f) {
+  if (!f) {
+    ['metric-tempo-val','metric-energy-val','metric-valence-val']
+      .forEach(id => document.getElementById(id).textContent = '—');
+    ['bar-tempo','bar-energy','bar-valence']
+      .forEach(id => document.getElementById(id).style.width = '0%');
+    return;
+  }
+  const tempoPct   = Math.min(100, Math.max(0, ((f.tempo - 60) / 140) * 100));
+  const energyPct  = f.energy  * 100;
+  const valencePct = f.valence * 100;
+  const color = emotionColor(f.valence, 1);
 
-        document.getElementById("metric-tempo-val").textContent =
-          Math.round(f.tempo) + " BPM";
-        document.getElementById("metric-energy-val").textContent =
-          Math.round(energyPct) + "%";
-        document.getElementById("metric-valence-val").textContent =
-          Math.round(valencePct) + "%";
+  document.getElementById('metric-tempo-val').textContent   = Math.round(f.tempo) + ' BPM';
+  document.getElementById('metric-energy-val').textContent  = Math.round(energyPct) + '%';
+  document.getElementById('metric-valence-val').textContent = Math.round(valencePct) + '%';
 
-        document.getElementById("bar-tempo").style.width =
-          tempoPct.toFixed(1) + "%";
-        document.getElementById("bar-tempo").style.backgroundColor = "#7b6cff";
-        document.getElementById("bar-energy").style.width =
-          energyPct.toFixed(1) + "%";
-        document.getElementById("bar-energy").style.backgroundColor = "#c4b5fd";
-        document.getElementById("bar-valence").style.width =
-          valencePct.toFixed(1) + "%";
-        document.getElementById("bar-valence").style.backgroundColor = color;
-      }
+  document.getElementById('bar-tempo').style.width            = tempoPct.toFixed(1) + '%';
+  document.getElementById('bar-tempo').style.backgroundColor   = '#7b6cff';
+  document.getElementById('bar-energy').style.width            = energyPct.toFixed(1) + '%';
+  document.getElementById('bar-energy').style.backgroundColor  = '#c4b5fd';
+  document.getElementById('bar-valence').style.width           = valencePct.toFixed(1) + '%';
+  document.getElementById('bar-valence').style.backgroundColor = color;
+}
 
-      function showError(msg) {
-        const t = document.getElementById("error-toast");
-        t.textContent = msg;
-        t.classList.add("visible");
-        setTimeout(() => t.classList.remove("visible"), 5500);
-      }
+function showError(msg) {
+  const t = document.getElementById('error-toast');
+  t.textContent = msg; t.classList.add('visible');
+  setTimeout(() => t.classList.remove('visible'), 5500);
+}
 
-      /* ══════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════
    6. MAIN LOOP
 ══════════════════════════════════════════════════ */
-      let lastTrackId = null;
-      let lastFeatures = null;
-      let pollInterval = null;
+let lastTrackId  = null;
+let lastFeatures = null;
+let pollInterval = null;
 
-      async function pollSpotify() {
-        const track = await fetchCurrentTrack();
-        const dash = document.getElementById("dashboard");
+async function pollSpotify() {
+  const track = await fetchCurrentTrack();
+  const dash  = document.getElementById('dashboard');
 
-        if (!dash.classList.contains("visible")) {
-          dash.style.display = "flex";
-          requestAnimationFrame(() => dash.classList.add("visible"));
-        }
+  if (!dash.classList.contains('visible')) {
+    dash.style.display = 'flex';
+    requestAnimationFrame(() => dash.classList.add('visible'));
+  }
 
-        if (!track || !track.item) {
-          updateDashboard(null, null);
-          lastTrackId = null;
-          lastFeatures = null;
-          return;
-        }
+  if (!track || !track.item) {
+    updateDashboard(null, null);
+    lastTrackId = null; lastFeatures = null;
+    return;
+  }
 
-        const trackId = track.item.id;
-        if (trackId !== lastTrackId) {
-          lastTrackId = trackId;
-          lastFeatures = await fetchTrackDetails(trackId);
-          updateDashboard(track, lastFeatures);
-        } else {
-          updateDashboard(track, null);
-        }
-      }
+  const trackId = track.item.id;
+  if (trackId !== lastTrackId) {
+    lastTrackId  = trackId;
+    lastFeatures = await fetchTrackDetails(trackId);
+    updateDashboard(track, lastFeatures);
+  } else {
+    updateDashboard(track, null);
+  }
+}
 
-      function initApp() {
-        document.getElementById("connect-screen").classList.add("hidden");
-        setTimeout(
-          () =>
-            (document.getElementById("connect-screen").style.display = "none"),
-          750,
-        );
-        pollSpotify();
-        pollInterval = setInterval(pollSpotify, 5000);
-      }
+function initApp() {
+  document.getElementById('connect-screen').classList.add('hidden');
+  setTimeout(() => document.getElementById('connect-screen').style.display = 'none', 750);
+  pollSpotify();
+  pollInterval = setInterval(pollSpotify, 5000);
+}
 
-      function disconnect() {
-        clearInterval(pollInterval);
-        sessionStorage.clear();
-        lastTrackId = null;
-        lastFeatures = null;
-        targetState = { tempo: 80, energy: 0.2, valence: 0.5, active: false };
-        const dash = document.getElementById("dashboard");
-        dash.classList.remove("visible");
-        setTimeout(() => {
-          dash.style.display = "none";
-        }, 700);
-        const cs = document.getElementById("connect-screen");
-        cs.style.display = "flex";
-        requestAnimationFrame(() => cs.classList.remove("hidden"));
-      }
+function disconnect() {
+  clearInterval(pollInterval);
+  sessionStorage.clear();
+  lastTrackId = null; lastFeatures = null;
+  targetState = { tempo: 80, energy: 0.2, valence: 0.5, active: false };
+  const dash = document.getElementById('dashboard');
+  dash.classList.remove('visible');
+  setTimeout(() => { dash.style.display = 'none'; }, 700);
+  const cs = document.getElementById('connect-screen');
+  cs.style.display = 'flex';
+  requestAnimationFrame(() => cs.classList.remove('hidden'));
+}
 
-      /* BOOT */
-      resizeCanvas();
-      window.addEventListener("resize", resizeCanvas);
-      initParticles(80);
-      animLoop();
+/* BOOT */
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+initParticles(80);
+animLoop();
 
-      document
-        .getElementById("btn-connect")
-        .addEventListener("click", startLogin);
-      document
-        .getElementById("btn-disconnect")
-        .addEventListener("click", disconnect);
+document.getElementById('btn-connect').addEventListener('click', startLogin);
+document.getElementById('btn-disconnect').addEventListener('click', disconnect);
 
-      const urlParams = new URLSearchParams(location.search);
-      const authCode = urlParams.get("code");
-      const authError = urlParams.get("error");
+const urlParams = new URLSearchParams(location.search);
+const authCode  = urlParams.get('code');
+const authError = urlParams.get('error');
 
-      if (authError) {
-        showError("Acceso denegado por Spotify.");
-        history.replaceState({}, "", location.pathname);
-      } else if (authCode) {
-        handleCallback(authCode);
-      } else {
-        const token = sessionStorage.getItem("access_token");
-        const expiry = parseInt(sessionStorage.getItem("token_expiry") || "0");
-        if (token && Date.now() < expiry) initApp();
-      }
-    </script>
-  </body>
+if (authError) {
+  showError('Acceso denegado por Spotify.');
+  history.replaceState({}, '', location.pathname);
+} else if (authCode) {
+  handleCallback(authCode);
+} else {
+  const token  = sessionStorage.getItem('access_token');
+  const expiry = parseInt(sessionStorage.getItem('token_expiry') || '0');
+  if (token && Date.now() < expiry) initApp();
+}
+</script>
+</body>
 </html>
