@@ -150,8 +150,43 @@ canvas#viz {
 /* acento coral en el texto de privacidad */
 .privacy-note strong { color: var(--clr-warm); font-weight: 400; }
 
-/* DASHBOARD */
-#dashboard {
+/* ALBUM COLOR OVERLAY — mancha de luz detrás del canvas */
+#album-glow {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  transition: background 4s ease;
+}
+
+/* HISTORIAL DE EMOCIONES */
+#history-panel {
+  position: fixed; top: 1.5rem; right: 1.5rem; z-index: 10;
+  width: 200px;
+  background: var(--clr-glass-bg);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--clr-glass-border);
+  border-radius: 14px;
+  padding: 1rem 1.1rem 0.9rem;
+  display: none; flex-direction: column; gap: 0.6rem;
+  opacity: 0; transition: opacity 0.6s ease;
+}
+#history-panel.visible { display: flex; opacity: 1; }
+.history-title {
+  font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--clr-muted); display: flex; justify-content: space-between; align-items: center;
+}
+.history-title span { color: var(--clr-accent-light); }
+#history-canvas {
+  width: 100%; height: 64px; border-radius: 6px;
+  display: block;
+}
+.history-legend {
+  display: flex; gap: 10px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.55rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--clr-muted);
+}
+.legend-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
   position: fixed; bottom: 2rem; left: 50%;
   transform: translateX(-50%);
   z-index: 10;
@@ -308,6 +343,25 @@ canvas#viz {
   <div class="privacy-note">
     Tus datos de escucha <strong>nunca se almacenan</strong>.<br/>
     Solo leemos la canción activa en tiempo real.
+  </div>
+</div>
+
+<!-- GLOW DE ÁLBUM — capa de color detrás de todo -->
+<div id="album-glow"></div>
+
+<!-- HISTORIAL DE EMOCIONES -->
+<div id="history-panel">
+  <div class="history-title">
+    Sesión emocional <span id="history-count">0 canciones</span>
+  </div>
+  <canvas id="history-canvas"></canvas>
+  <div class="history-legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#c4b5fd;"></div>energía
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#ff7e6b;"></div>valencia
+    </div>
   </div>
 </div>
 
@@ -726,8 +780,142 @@ function animLoop() {
 }
 
 /* ══════════════════════════════════════════════════
-   5. UI
+   5b. COLOR DEL ÁLBUM
+   Extrae el color dominante de la portada usando
+   un canvas offscreen y lo aplica como glow de fondo
 ══════════════════════════════════════════════════ */
+let lastAlbumUrl = null;
+
+function extractAlbumColor(imgUrl) {
+  if (!imgUrl || imgUrl === lastAlbumUrl) return;
+  lastAlbumUrl = imgUrl;
+
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const size = 24; /* muestrea a baja resolución para velocidad */
+    const offscreen = document.createElement('canvas');
+    offscreen.width = offscreen.height = size;
+    const octx = offscreen.getContext('2d');
+    octx.drawImage(img, 0, 0, size, size);
+    const data = octx.getImageData(0, 0, size, size).data;
+
+    /* promedio de píxeles ignorando muy oscuros y muy claros */
+    let r = 0, g = 0, b = 0, count = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
+      if (brightness > 30 && brightness < 230) {
+        r += data[i]; g += data[i+1]; b += data[i+2]; count++;
+      }
+    }
+    if (!count) return;
+    r = Math.round(r / count);
+    g = Math.round(g / count);
+    b = Math.round(b / count);
+
+    /* aplica como glow muy suave — no reemplaza el fondo, lo tiñe */
+    const glow = document.getElementById('album-glow');
+    glow.style.background =
+      `radial-gradient(ellipse 70% 60% at 50% 100%, rgba(${r},${g},${b},0.18) 0%, transparent 70%),` +
+      `radial-gradient(ellipse 40% 30% at 20% 20%, rgba(${r},${g},${b},0.08) 0%, transparent 60%)`;
+  };
+  img.onerror = () => {};
+  img.src = imgUrl;
+}
+
+/* ══════════════════════════════════════════════════
+   5c. HISTORIAL DE EMOCIONES
+   Guarda un punto por canción y dibuja líneas de
+   energía (lavanda) y valencia (coral) en el tiempo
+══════════════════════════════════════════════════ */
+const emotionHistory = []; /* { name, energy, valence, color } */
+const MAX_HISTORY = 30;
+
+function addToHistory(trackName, features) {
+  if (!features) return;
+  emotionHistory.push({
+    name:    trackName,
+    energy:  features.energy  ?? 0.5,
+    valence: features.valence ?? 0.5,
+  });
+  if (emotionHistory.length > MAX_HISTORY) emotionHistory.shift();
+  drawHistory();
+  document.getElementById('history-count').textContent =
+    emotionHistory.length + (emotionHistory.length === 1 ? ' canción' : ' canciones');
+}
+
+function drawHistory() {
+  const hCanvas = document.getElementById('history-canvas');
+  const hCtx    = hCanvas.getContext('2d');
+  const W = hCanvas.offsetWidth * devicePixelRatio;
+  const H = 64 * devicePixelRatio;
+  hCanvas.width  = W;
+  hCanvas.height = H;
+  hCtx.scale(devicePixelRatio, devicePixelRatio);
+  const w = hCanvas.offsetWidth;
+  const h = 64;
+
+  hCtx.clearRect(0, 0, w, h);
+
+  if (emotionHistory.length < 2) return;
+
+  const n    = emotionHistory.length;
+  const step = w / (n - 1);
+
+  /* área rellena bajo cada línea */
+  const drawArea = (key, color) => {
+    hCtx.beginPath();
+    hCtx.moveTo(0, h);
+    emotionHistory.forEach((d, i) => {
+      hCtx.lineTo(i * step, h - d[key] * (h - 6) - 3);
+    });
+    hCtx.lineTo((n - 1) * step, h);
+    hCtx.closePath();
+    hCtx.fillStyle = color.replace('1)', '0.12)');
+    hCtx.fill();
+  };
+
+  /* líneas suaves */
+  const drawLine = (key, color, width) => {
+    hCtx.beginPath();
+    emotionHistory.forEach((d, i) => {
+      const x = i * step;
+      const y = h - d[key] * (h - 6) - 3;
+      i === 0 ? hCtx.moveTo(x, y) : hCtx.lineTo(x, y);
+    });
+    hCtx.strokeStyle = color;
+    hCtx.lineWidth   = width;
+    hCtx.lineJoin    = 'round';
+    hCtx.stroke();
+  };
+
+  /* puntos en el último valor */
+  const drawDot = (key, color) => {
+    const last = emotionHistory[n - 1];
+    const x = (n - 1) * step;
+    const y = h - last[key] * (h - 6) - 3;
+    hCtx.beginPath();
+    hCtx.arc(x, y, 2.5, 0, Math.PI * 2);
+    hCtx.fillStyle = color;
+    hCtx.fill();
+  };
+
+  drawArea('energy',  'rgba(196,181,253,1)');
+  drawArea('valence', 'rgba(255,126,107,1)');
+  drawLine('energy',  'rgba(196,181,253,0.85)', 1.5);
+  drawLine('valence', 'rgba(255,126,107,0.85)', 1.5);
+  drawDot('energy',   '#c4b5fd');
+  drawDot('valence',  '#ff7e6b');
+
+  /* línea de referencia 50% */
+  hCtx.beginPath();
+  hCtx.moveTo(0, h * 0.5); hCtx.lineTo(w, h * 0.5);
+  hCtx.strokeStyle = 'rgba(196,181,253,0.1)';
+  hCtx.lineWidth   = 0.5; hCtx.setLineDash([3, 4]);
+  hCtx.stroke(); hCtx.setLineDash([]);
+}
+
+
 function updateDashboard(track, features) {
   if (!track || !track.item) {
     document.getElementById('track-name').textContent   = 'Sin reproducción activa';
@@ -749,8 +937,10 @@ function updateDashboard(track, features) {
 
   if (imgSrc) {
     wrap.innerHTML = `<img src="${imgSrc}" alt="portada" />`;
+    extractAlbumColor(imgSrc);
   } else {
     wrap.innerHTML = '<span style="font-size:1.5rem;opacity:0.2">♪</span>';
+    extractAlbumColor(null);
   }
 
   document.getElementById('track-name').textContent   = item.name || '—';
@@ -774,6 +964,7 @@ function updateDashboard(track, features) {
       active:  isPlaying,
     };
     renderMetrics(features);
+    addToHistory(item.name || '?', features);
   }
 }
 
@@ -843,6 +1034,9 @@ async function pollSpotify() {
 function initApp() {
   document.getElementById('connect-screen').classList.add('hidden');
   setTimeout(() => document.getElementById('connect-screen').style.display = 'none', 750);
+  const hp = document.getElementById('history-panel');
+  hp.style.display = 'flex';
+  requestAnimationFrame(() => hp.classList.add('visible'));
   pollSpotify();
   pollInterval = setInterval(pollSpotify, 5000);
 }
@@ -850,8 +1044,13 @@ function initApp() {
 function disconnect() {
   clearInterval(pollInterval);
   sessionStorage.clear();
-  lastTrackId = null; lastFeatures = null;
+  lastTrackId = null; lastFeatures = null; lastAlbumUrl = null;
+  emotionHistory.length = 0;
   targetState = { tempo: 80, energy: 0.2, valence: 0.5, active: false };
+  document.getElementById('album-glow').style.background = '';
+  const hp = document.getElementById('history-panel');
+  hp.classList.remove('visible');
+  setTimeout(() => { hp.style.display = 'none'; }, 700);
   const dash = document.getElementById('dashboard');
   dash.classList.remove('visible');
   setTimeout(() => { dash.style.display = 'none'; }, 700);
