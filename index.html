@@ -653,34 +653,12 @@ class Particle {
       this.y += (this.vy * speedMult) + perpY * wobble * 0.05;
     }
 
-    /* ── REBOTE FÍSICO según tempo ──
-       restitution: cuánta velocidad conserva la partícula al rebotar.
-       < 1.0 = pierde energía (amortiguado)
-       = 1.0 = conserva energía (perfecto)
-       Nunca > 1.0 — así no se acumula velocidad entre rebotes.
-
-       60 BPM  → 0.55 (muy amortiguado, partículas se van frenando)
-       120 BPM → 0.82 (rebote fluido, casi sin pérdida)
-       180 BPM → 0.97 (casi perfecto, muy vivo pero sin dispararse) */
-    const t60  = Math.max(0, Math.min(1, (tempo - 60) / 120));
-    const restitution = 0.55 + t60 * 0.42; /* 0.55 → 0.97 */
-
-    const flashThresh = 145;
-    let bounced = false;
-
-    if (this.x < 0)            { this.x = 0;            this.vx =  Math.abs(this.vx) * restitution; bounced = true; }
-    if (this.x > canvas.width) { this.x = canvas.width; this.vx = -Math.abs(this.vx) * restitution; bounced = true; }
-    if (this.y < 0)            { this.y = 0;            this.vy =  Math.abs(this.vy) * restitution; bounced = true; }
-    if (this.y > canvas.height){ this.y = canvas.height;this.vy = -Math.abs(this.vy) * restitution; bounced = true; }
-
-    /* Flash de impacto solo en tempos realmente rápidos */
-    if (bounced && tempo > flashThresh && energy > 0.4) {
-      const flashAlpha = Math.min(0.35, (tempo - flashThresh) / 35 * energy * 0.5);
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius * 4, 0, Math.PI * 2);
-      ctx.fillStyle = emotionColor(valence, flashAlpha);
-      ctx.fill();
-    }
+    /* ── WRAP-AROUND: al salir del canvas reaparece al otro lado ──
+       Más fluido que el rebote, como partículas flotando en un espacio infinito */
+    if (this.x < -this.radius)          this.x = canvas.width  + this.radius;
+    if (this.x > canvas.width  + this.radius) this.x = -this.radius;
+    if (this.y < -this.radius)          this.y = canvas.height + this.radius;
+    if (this.y > canvas.height + this.radius) this.y = -this.radius;
 
     this.ox = this.x; this.oy = this.y;
 
@@ -778,6 +756,56 @@ function drawConnections(valence, energy) {
   }
 }
 
+/* ── BEAT RIPPLES ──
+   Ondas circulares que emanan del centro al ritmo del BPM.
+   Cada ripple nace pequeño, se expande hasta cubrir la pantalla
+   y se desvanece. El número de ripples simultáneos y su
+   velocidad de expansión siguen el tempo en tiempo real.     */
+const ripples = [];
+
+function spawnRipple(valence, energy) {
+  ripples.push({
+    x:       canvas.width  / 2,
+    y:       canvas.height / 2,
+    r:       0,
+    maxR:    Math.hypot(canvas.width, canvas.height) / 2 * 1.1,
+    alpha:   0.28 + energy * 0.18,
+    valence: valence,
+    speed:   1.8 + energy * 3.5,   /* px por frame — más energía = expande más rápido */
+  });
+}
+
+function drawRipples() {
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const rp = ripples[i];
+    rp.r    += rp.speed;
+    rp.alpha *= 0.968;             /* fade suave */
+
+    if (rp.alpha < 0.003 || rp.r > rp.maxR) {
+      ripples.splice(i, 1);
+      continue;
+    }
+
+    ctx.beginPath();
+    ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+    ctx.strokeStyle = emotionColor(rp.valence, rp.alpha);
+    ctx.lineWidth   = 1.5 + rp.alpha * 3;
+    ctx.stroke();
+  }
+}
+
+/* Temporizador del beat — dispara un ripple cada intervalo BPM */
+let lastBeatTime = 0;
+
+function tickBeat(tempo, valence, energy, now) {
+  if (!currentState.active || energy < 0.1) return;
+  const beatInterval = (60 / tempo) * 1000; /* ms entre beats */
+  if (now - lastBeatTime >= beatInterval) {
+    lastBeatTime = now;
+    spawnRipple(valence, energy);
+  }
+}
+
 function animLoop() {
   clock++;
   const t = 0.018;
@@ -795,6 +823,8 @@ function animLoop() {
 
   const sm = (tempo - 60) / 140 * 2.8 + 0.25;
 
+  tickBeat(tempo, valence, energy, performance.now());
+  drawRipples();
   drawWaves(valence, energy, tempo);
   adjustParticleCount();
   drawConnections(valence, energy);
