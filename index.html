@@ -765,9 +765,10 @@
       const lerp = (a, b, t) => a + (b - a) * t;
 
       function valenceToHSL(v, alpha = 1) {
-        const h = Math.round(lerp(250, 10, v));
-        const s = Math.round(lerp(72, 90, v));
-        const l = Math.round(lerp(58, 63, v));
+        /* lavanda iris (252°) → coral cálido (8°) — saturado y vívido */
+        const h = Math.round(lerp(252, 8, v));
+        const s = Math.round(lerp(80, 95, v));
+        const l = Math.round(lerp(65, 66, v));
         return `hsla(${h},${s}%,${l}%,${alpha})`;
       }
 
@@ -970,15 +971,15 @@
         document.getElementById("metric-valence-val").textContent =
           Math.round(valencePct) + "%";
 
-        [
-          ["bar-tempo", tempoPct],
-          ["bar-energy", energyPct],
-          ["bar-valence", valencePct],
-        ].forEach(([id, pct]) => {
-          const el = document.getElementById(id);
-          el.style.width = pct.toFixed(1) + "%";
-          el.style.backgroundColor = color;
-        });
+        document.getElementById("bar-tempo").style.width =
+          tempoPct.toFixed(1) + "%";
+        document.getElementById("bar-tempo").style.backgroundColor = "#7b6cff";
+        document.getElementById("bar-energy").style.width =
+          energyPct.toFixed(1) + "%";
+        document.getElementById("bar-energy").style.backgroundColor = "#c4b5fd";
+        document.getElementById("bar-valence").style.width =
+          valencePct.toFixed(1) + "%";
+        document.getElementById("bar-valence").style.backgroundColor = color;
       }
 
       function showError(msg) {
