@@ -710,52 +710,80 @@ function drawConnections(valence, energy) {
 }
 
 /* ── BEAT RIPPLES ──
-   Ondas circulares que emanan del centro al ritmo del BPM.
-   Cada ripple nace pequeño, se expande hasta cubrir la pantalla
-   y se desvanece. El número de ripples simultáneos y su
-   velocidad de expansión siguen el tempo en tiempo real.     */
+   Cada beat lanza una onda que:
+   - Nace gruesa y brillante en el centro
+   - Se expande rápido al principio y desacelera (easeOut)
+   - El grosor y opacidad caen a medida que se expande
+   - La velocidad de expansión depende del tempo exacto:
+     el ripple debe llegar al borde justo antes del próximo beat */
 const ripples = [];
 
-function spawnRipple(valence, energy) {
+function spawnRipple(valence, energy, tempo) {
+  const maxR      = Math.hypot(canvas.width, canvas.height) / 2 * 1.05;
+  const beatSecs  = 60 / tempo;          /* duración de un beat en segundos */
   ripples.push({
-    x:       canvas.width  / 2,
-    y:       canvas.height / 2,
-    r:       0,
-    maxR:    Math.hypot(canvas.width, canvas.height) / 2 * 1.1,
-    alpha:   0.28 + energy * 0.18,
-    valence: valence,
-    speed:   1.8 + energy * 3.5,   /* px por frame — más energía = expande más rápido */
+    x:        canvas.width  / 2,
+    y:        canvas.height / 2,
+    r:        0,
+    maxR:     maxR,
+    progress: 0,                         /* 0 → 1 a lo largo de un beat */
+    duration: beatSecs * 0.92,           /* llega al borde en ~92% del beat */
+    alpha0:   0.5 + energy * 0.35,       /* opacidad inicial según energía */
+    width0:   3.5 + energy * 4,          /* grosor inicial */
+    valence:  valence,
+    born:     performance.now(),
   });
 }
 
-function drawRipples() {
+function drawRipples(now) {
   for (let i = ripples.length - 1; i >= 0; i--) {
     const rp = ripples[i];
-    rp.r    += rp.speed;
-    rp.alpha *= 0.968;             /* fade suave */
+    const elapsed  = (now - rp.born) / 1000;       /* segundos desde el spawn */
+    rp.progress    = Math.min(1, elapsed / rp.duration);
 
-    if (rp.alpha < 0.003 || rp.r > rp.maxR) {
+    /* easeOut cúbico: rápido al inicio, lento al final */
+    const ease     = 1 - Math.pow(1 - rp.progress, 3);
+    rp.r           = ease * rp.maxR;
+
+    /* opacidad y grosor caen con el progreso */
+    const alpha    = rp.alpha0 * (1 - rp.progress);
+    const lw       = rp.width0 * (1 - rp.progress * 0.85);
+
+    if (rp.progress >= 1 || alpha < 0.005) {
       ripples.splice(i, 1);
       continue;
     }
 
     ctx.beginPath();
     ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
-    ctx.strokeStyle = emotionColor(rp.valence, rp.alpha);
-    ctx.lineWidth   = 1.5 + rp.alpha * 3;
+    ctx.strokeStyle = emotionColor(rp.valence, alpha);
+    ctx.lineWidth   = lw;
     ctx.stroke();
   }
 }
 
-/* Temporizador del beat — dispara un ripple cada intervalo BPM */
-let lastBeatTime = 0;
+/* Temporizador del beat — usa performance.now() directamente,
+   sin pasar por el lerp de currentState para máxima precisión */
+let lastBeatTime  = 0;
+let lastBeatTempo = 0;
 
-function tickBeat(tempo, valence, energy, now) {
-  if (!currentState.active || energy < 0.1) return;
-  const beatInterval = (60 / tempo) * 1000; /* ms entre beats */
+function tickBeat(valence, energy, now) {
+  if (!targetState.active || energy < 0.08) return;
+  const tempo        = targetState.tempo;           /* tempo sin suavizar */
+  const beatInterval = (60 / tempo) * 1000;
+
+  /* Si el tempo cambió mucho, resetear para evitar rafaga de beats */
+  if (Math.abs(tempo - lastBeatTempo) > 20) {
+    lastBeatTime  = now;
+    lastBeatTempo = tempo;
+    return;
+  }
+
   if (now - lastBeatTime >= beatInterval) {
-    lastBeatTime = now;
-    spawnRipple(valence, energy);
+    lastBeatTime += beatInterval;                   /* drift correction */
+    if (now - lastBeatTime > beatInterval) lastBeatTime = now;
+    lastBeatTempo = tempo;
+    spawnRipple(valence, energy, tempo);
   }
 }
 
@@ -774,10 +802,11 @@ function animLoop() {
   ctx.fillStyle = `rgba(9,9,15,${trailAlpha})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const sm = (tempo - 60) / 140 * 2.0 + 0.3;
+  const now = performance.now();
+  const sm  = (tempo - 60) / 140 * 2.0 + 0.3;
 
-  tickBeat(tempo, valence, energy, performance.now());
-  drawRipples();
+  tickBeat(valence, energy, now);
+  drawRipples(now);
   drawWaves(valence, energy, tempo);
   adjustParticleCount();
   drawConnections(valence, energy);
