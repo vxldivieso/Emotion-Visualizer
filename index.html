@@ -585,6 +585,7 @@ const ctx    = canvas.getContext('2d');
 
 
 
+let particles    = [];
 let targetState  = { tempo: 80, energy: 0.2, valence: 0.5, active: false };
 let currentState = { ...targetState };
 
@@ -610,26 +611,50 @@ function emotionColorSoft(v, alpha = 1) {
 let clock = 0; /* tiempo global para ondas */
 
 
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x      = Math.random() * canvas.width;
+    this.y      = Math.random() * canvas.height;
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = 0.15 + Math.random() * 0.4;
+    this.vx     = Math.cos(angle) * spd;
+    this.vy     = Math.sin(angle) * spd;
+    this.radius = 1.2 + Math.random() * 2.8;
+    this.alpha  = 0.4 + Math.random() * 0.5;
+  }
+  update(speedMult) {
+    this.x += this.vx * speedMult;
+    this.y += this.vy * speedMult;
+    /* wrap-around suave */
+    if (this.x < -this.radius)               this.x = canvas.width  + this.radius;
+    if (this.x > canvas.width  + this.radius) this.x = -this.radius;
+    if (this.y < -this.radius)               this.y = canvas.height + this.radius;
+    if (this.y > canvas.height + this.radius) this.y = -this.radius;
+  }
+  draw(valence, active) {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = active
+      ? emotionColor(valence, this.alpha)
+      : `rgba(100,95,145,${this.alpha * 0.35})`;
+    ctx.fill();
+  }
+}
+
 function resizeCanvas() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
-  initNodes();
 }
 
-/* Nodos fijos distribuidos en una cuadrícula irregular — solo para las líneas de conexión */
-let nodes = [];
-function initNodes() {
-  nodes = [];
-  const cols = 12, rows = 8;
-  const cw = canvas.width / cols, ch = canvas.height / rows;
-  for (let c = 0; c < cols; c++) {
-    for (let r = 0; r < rows; r++) {
-      nodes.push({
-        x: cw * c + cw * 0.2 + Math.random() * cw * 0.6,
-        y: ch * r + ch * 0.2 + Math.random() * ch * 0.6,
-      });
-    }
-  }
+function initParticles(n) {
+  particles = Array.from({ length: n }, () => new Particle());
+}
+
+function adjustParticleCount() {
+  const target = Math.round(60 + currentState.energy * 100);
+  while (particles.length < target) particles.push(new Particle());
+  if (particles.length > target + 10) particles.splice(target);
 }
 
 /* Ondas de fondo — líneas sinusoidales que atraviesan la pantalla */
@@ -663,17 +688,17 @@ function drawWaves(valence, energy, tempo) {
   }
 }
 
-/* Conexiones entre nodos fijos cercanos */
+/* Conexiones entre partículas cercanas */
 function drawConnections(valence, energy) {
-  const maxDist = 110 + energy * 60;
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const d = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+  const maxDist = 100 + energy * 40;
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const d = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
       if (d < maxDist) {
-        const a = (1 - d / maxDist) * 0.14 * (0.3 + energy * 0.7);
+        const a = (1 - d / maxDist) * 0.18 * (0.4 + energy * 0.6);
         ctx.beginPath();
-        ctx.moveTo(nodes[i].x, nodes[i].y);
-        ctx.lineTo(nodes[j].x, nodes[j].y);
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
         ctx.strokeStyle = currentState.active
           ? emotionColor(valence, a)
           : `rgba(100,95,145,${a * 0.4})`;
@@ -749,10 +774,14 @@ function animLoop() {
   ctx.fillStyle = `rgba(9,9,15,${trailAlpha})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  const sm = (tempo - 60) / 140 * 2.0 + 0.3;
+
   tickBeat(tempo, valence, energy, performance.now());
   drawRipples();
   drawWaves(valence, energy, tempo);
+  adjustParticleCount();
   drawConnections(valence, energy);
+  for (const p of particles) { p.update(sm); p.draw(valence, active); }
 
   requestAnimationFrame(animLoop);
 }
@@ -1040,6 +1069,7 @@ function disconnect() {
 /* BOOT */
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+initParticles(80);
 animLoop();
 
 document.getElementById('btn-connect').addEventListener('click', startLogin);
