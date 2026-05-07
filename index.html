@@ -653,11 +653,50 @@ class Particle {
       this.y += (this.vy * speedMult) + perpY * wobble * 0.05;
     }
 
-    /* rebotar */
-    if (this.x < 0)             { this.x = 0;             this.vx *= -1; this.ox = this.x; }
-    if (this.x > canvas.width)  { this.x = canvas.width;  this.vx *= -1; this.ox = this.x; }
-    if (this.y < 0)             { this.y = 0;             this.vy *= -1; this.oy = this.y; }
-    if (this.y > canvas.height) { this.y = canvas.height; this.vy *= -1; this.oy = this.y; }
+    /* ── REBOTE ELÁSTICO según tempo ──
+       bouncePower: a 60 BPM = 1.0 (neutro), a 180 BPM = 1.8 (muy elástico)
+       En cada rebote la partícula sale acelerada proporcionalmente al BPM.
+       A tempo alto también genera un flash visual de impacto.           */
+    const bouncePower = 1.0 + ((tempo - 60) / 120) * 0.9; /* 1.0 – 1.9 */
+    const flashThresh = 140; /* BPM mínimo para flash */
+
+    let bounced = false;
+    if (this.x < 0) {
+      this.x  = 0;
+      this.vx = Math.abs(this.vx) * bouncePower;
+      bounced = true;
+    }
+    if (this.x > canvas.width) {
+      this.x  = canvas.width;
+      this.vx = -Math.abs(this.vx) * bouncePower;
+      bounced = true;
+    }
+    if (this.y < 0) {
+      this.y  = 0;
+      this.vy = Math.abs(this.vy) * bouncePower;
+      bounced = true;
+    }
+    if (this.y > canvas.height) {
+      this.y  = canvas.height;
+      this.vy = -Math.abs(this.vy) * bouncePower;
+      bounced = true;
+    }
+
+    /* Clamp velocidad para que no se disparen infinito */
+    const maxSpd = 6 * speedMult;
+    const spd = Math.hypot(this.vx, this.vy);
+    if (spd > maxSpd) { this.vx = (this.vx/spd)*maxSpd; this.vy = (this.vy/spd)*maxSpd; }
+
+    /* Flash de impacto en tempos altos */
+    if (bounced && tempo > flashThresh && energy > 0.3) {
+      const flashAlpha = Math.min(0.55, (tempo - flashThresh) / 80 * energy);
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius * 5, 0, Math.PI * 2);
+      ctx.fillStyle = emotionColor(valence, flashAlpha);
+      ctx.fill();
+    }
+
+    this.ox = this.x; this.oy = this.y;
 
     /* pulso de tamaño sincronizado al beat */
     const beatPulse = 1 + Math.sin(waveT * beatHz * Math.PI * 2 + this.phase) * 0.28 * energy;
