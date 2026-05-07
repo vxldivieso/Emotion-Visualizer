@@ -583,8 +583,8 @@ function deriveFeatures(track) {
 const canvas = document.getElementById('viz');
 const ctx    = canvas.getContext('2d');
 
-let particles    = [];
-let targetState  = { tempo: 80, energy: 0.2, valence: 0.5, active: false };
+
+
 let currentState = { ...targetState };
 
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -608,100 +608,27 @@ function emotionColorSoft(v, alpha = 1) {
 
 let clock = 0; /* tiempo global para ondas */
 
-class Particle {
-  constructor() { this.init(); }
-
-  init() {
-    this.x  = Math.random() * canvas.width;
-    this.y  = Math.random() * canvas.height;
-    this.ox = this.x; /* origen para oscilación */
-    this.oy = this.y;
-    const angle = Math.random() * Math.PI * 2;
-    const spd   = 0.15 + Math.random() * 0.5;
-    this.vx     = Math.cos(angle) * spd;
-    this.vy     = Math.sin(angle) * spd;
-    this.radius = 1.2 + Math.random() * 3.5;
-    this.alpha  = 0.45 + Math.random() * 0.55;
-    this.phase  = Math.random() * Math.PI * 2; /* fase individual de onda */
-    this.waveAmp = 20 + Math.random() * 60;    /* amplitud de oscilación */
-    this.waveFreq = 0.4 + Math.random() * 1.2; /* frecuencia propia */
-    this.type   = Math.random();               /* 0=libre 0.7=orbitante */
-  }
-
-  update(speedMult, energy, valence, tempo) {
-    const beatHz = tempo / 60;          /* pulsos por segundo */
-    const waveT  = clock * 0.016;       /* segundos aprox */
-
-    if (this.type > 0.72 && currentState.active) {
-      /* ── MODO ORBITAL: giran alrededor de su origen con la onda ── */
-      const orbitR = this.waveAmp * energy;
-      const orbitSpeed = beatHz * this.waveFreq * 0.5;
-      this.x = this.ox + Math.cos(waveT * orbitSpeed + this.phase) * orbitR;
-      this.y = this.oy + Math.sin(waveT * orbitSpeed * 0.7 + this.phase) * orbitR * 0.6;
-
-      /* deriva lenta del origen */
-      this.ox += this.vx * 0.18 * speedMult;
-      this.oy += this.vy * 0.18 * speedMult;
-    } else {
-      /* ── MODO LIBRE: deriva + perturbación sinusoidal transversal ── */
-      const perpX = -this.vy;
-      const perpY =  this.vx;
-      const wobble = Math.sin(waveT * this.waveFreq * beatHz + this.phase)
-                     * this.waveAmp * energy * 0.35;
-
-      this.x += (this.vx * speedMult) + perpX * wobble * 0.05;
-      this.y += (this.vy * speedMult) + perpY * wobble * 0.05;
-    }
-
-    /* ── WRAP-AROUND: al salir del canvas reaparece al otro lado ──
-       Más fluido que el rebote, como partículas flotando en un espacio infinito */
-    if (this.x < -this.radius)          this.x = canvas.width  + this.radius;
-    if (this.x > canvas.width  + this.radius) this.x = -this.radius;
-    if (this.y < -this.radius)          this.y = canvas.height + this.radius;
-    if (this.y > canvas.height + this.radius) this.y = -this.radius;
-
-    this.ox = this.x; this.oy = this.y;
-
-    /* pulso de tamaño sincronizado al beat */
-    const beatPulse = 1 + Math.sin(waveT * beatHz * Math.PI * 2 + this.phase) * 0.28 * energy;
-    this.drawRadius = this.radius * beatPulse;
-  }
-
-  draw(valence, active) {
-    if (!active) {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(100,95,145,${this.alpha * 0.32})`;
-      ctx.fill();
-      return;
-    }
-    const r = this.drawRadius || this.radius;
-    /* halo suave detrás */
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, r * 2.2, 0, Math.PI * 2);
-    ctx.fillStyle = emotionColor(valence, this.alpha * 0.08);
-    ctx.fill();
-    /* núcleo */
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = emotionColor(valence, this.alpha);
-    ctx.fill();
-  }
-}
 
 function resizeCanvas() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
+  initNodes();
 }
 
-function initParticles(n) {
-  particles = Array.from({ length: n }, () => new Particle());
-}
-
-function adjustParticleCount() {
-  const target = Math.round(40 + currentState.energy * 180);
-  while (particles.length < target) particles.push(new Particle());
-  if (particles.length > target + 12) particles.splice(target);
+/* Nodos fijos distribuidos en una cuadrícula irregular — solo para las líneas de conexión */
+let nodes = [];
+function initNodes() {
+  nodes = [];
+  const cols = 12, rows = 8;
+  const cw = canvas.width / cols, ch = canvas.height / rows;
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      nodes.push({
+        x: cw * c + cw * 0.2 + Math.random() * cw * 0.6,
+        y: ch * r + ch * 0.2 + Math.random() * ch * 0.6,
+      });
+    }
+  }
 }
 
 /* Ondas de fondo — líneas sinusoidales que atraviesan la pantalla */
@@ -735,21 +662,21 @@ function drawWaves(valence, energy, tempo) {
   }
 }
 
-/* Conexiones entre partículas cercanas */
+/* Conexiones entre nodos fijos cercanos */
 function drawConnections(valence, energy) {
-  const maxDist = 90 + energy * 40;
-  for (let i = 0; i < particles.length; i++) {
-    for (let j = i + 1; j < particles.length; j++) {
-      const d = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
+  const maxDist = 110 + energy * 60;
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const d = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
       if (d < maxDist) {
-        const a = (1 - d / maxDist) * 0.18 * energy;
+        const a = (1 - d / maxDist) * 0.14 * (0.3 + energy * 0.7);
         ctx.beginPath();
-        ctx.moveTo(particles[i].x, particles[i].y);
-        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.moveTo(nodes[i].x, nodes[i].y);
+        ctx.lineTo(nodes[j].x, nodes[j].y);
         ctx.strokeStyle = currentState.active
           ? emotionColor(valence, a)
           : `rgba(100,95,145,${a * 0.4})`;
-        ctx.lineWidth = 0.6;
+        ctx.lineWidth = 0.5;
         ctx.stroke();
       }
     }
@@ -821,17 +748,10 @@ function animLoop() {
   ctx.fillStyle = `rgba(9,9,15,${trailAlpha})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const sm = (tempo - 60) / 140 * 2.8 + 0.25;
-
   tickBeat(tempo, valence, energy, performance.now());
   drawRipples();
   drawWaves(valence, energy, tempo);
-  adjustParticleCount();
   drawConnections(valence, energy);
-  for (const p of particles) {
-    p.update(sm, energy, valence, tempo);
-    p.draw(valence, active);
-  }
 
   requestAnimationFrame(animLoop);
 }
@@ -1119,7 +1039,6 @@ function disconnect() {
 /* BOOT */
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
-initParticles(80);
 animLoop();
 
 document.getElementById('btn-connect').addEventListener('click', startLogin);
