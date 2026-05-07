@@ -743,7 +743,7 @@ function drawRipples(now) {
 
     /* easeOut cúbico: rápido al inicio, lento al final */
     const ease     = 1 - Math.pow(1 - rp.progress, 3);
-    rp.r           = ease * rp.maxR;
+    rp.r = Math.max(0, ease * rp.maxR);
 
     /* opacidad y grosor caen con el progreso */
     const alpha    = rp.alpha0 * (1 - rp.progress);
