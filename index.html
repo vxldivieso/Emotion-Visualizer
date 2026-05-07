@@ -653,45 +653,31 @@ class Particle {
       this.y += (this.vy * speedMult) + perpY * wobble * 0.05;
     }
 
-    /* ── REBOTE ELÁSTICO según tempo ──
-       bouncePower: a 60 BPM = 1.0 (neutro), a 180 BPM = 1.8 (muy elástico)
-       En cada rebote la partícula sale acelerada proporcionalmente al BPM.
-       A tempo alto también genera un flash visual de impacto.           */
-    const bouncePower = 1.0 + ((tempo - 60) / 120) * 0.9; /* 1.0 – 1.9 */
-    const flashThresh = 140; /* BPM mínimo para flash */
+    /* ── REBOTE FÍSICO según tempo ──
+       restitution: cuánta velocidad conserva la partícula al rebotar.
+       < 1.0 = pierde energía (amortiguado)
+       = 1.0 = conserva energía (perfecto)
+       Nunca > 1.0 — así no se acumula velocidad entre rebotes.
 
+       60 BPM  → 0.55 (muy amortiguado, partículas se van frenando)
+       120 BPM → 0.82 (rebote fluido, casi sin pérdida)
+       180 BPM → 0.97 (casi perfecto, muy vivo pero sin dispararse) */
+    const t60  = Math.max(0, Math.min(1, (tempo - 60) / 120));
+    const restitution = 0.55 + t60 * 0.42; /* 0.55 → 0.97 */
+
+    const flashThresh = 145;
     let bounced = false;
-    if (this.x < 0) {
-      this.x  = 0;
-      this.vx = Math.abs(this.vx) * bouncePower;
-      bounced = true;
-    }
-    if (this.x > canvas.width) {
-      this.x  = canvas.width;
-      this.vx = -Math.abs(this.vx) * bouncePower;
-      bounced = true;
-    }
-    if (this.y < 0) {
-      this.y  = 0;
-      this.vy = Math.abs(this.vy) * bouncePower;
-      bounced = true;
-    }
-    if (this.y > canvas.height) {
-      this.y  = canvas.height;
-      this.vy = -Math.abs(this.vy) * bouncePower;
-      bounced = true;
-    }
 
-    /* Clamp velocidad para que no se disparen infinito */
-    const maxSpd = 6 * speedMult;
-    const spd = Math.hypot(this.vx, this.vy);
-    if (spd > maxSpd) { this.vx = (this.vx/spd)*maxSpd; this.vy = (this.vy/spd)*maxSpd; }
+    if (this.x < 0)            { this.x = 0;            this.vx =  Math.abs(this.vx) * restitution; bounced = true; }
+    if (this.x > canvas.width) { this.x = canvas.width; this.vx = -Math.abs(this.vx) * restitution; bounced = true; }
+    if (this.y < 0)            { this.y = 0;            this.vy =  Math.abs(this.vy) * restitution; bounced = true; }
+    if (this.y > canvas.height){ this.y = canvas.height;this.vy = -Math.abs(this.vy) * restitution; bounced = true; }
 
-    /* Flash de impacto en tempos altos */
-    if (bounced && tempo > flashThresh && energy > 0.3) {
-      const flashAlpha = Math.min(0.55, (tempo - flashThresh) / 80 * energy);
+    /* Flash de impacto solo en tempos realmente rápidos */
+    if (bounced && tempo > flashThresh && energy > 0.4) {
+      const flashAlpha = Math.min(0.35, (tempo - flashThresh) / 35 * energy * 0.5);
       ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius * 5, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, this.radius * 4, 0, Math.PI * 2);
       ctx.fillStyle = emotionColor(valence, flashAlpha);
       ctx.fill();
     }
