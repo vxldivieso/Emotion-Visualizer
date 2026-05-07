@@ -585,6 +585,7 @@ const ctx    = canvas.getContext('2d');
 
 
 
+let targetState  = { tempo: 80, energy: 0.2, valence: 0.5, active: false };
 let currentState = { ...targetState };
 
 const lerp = (a, b, t) => a + (b - a) * t;
